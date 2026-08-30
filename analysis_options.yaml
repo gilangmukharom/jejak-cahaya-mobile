@@ -1,0 +1,36 @@
+include: package:flutter_lints/flutter.yaml
+
+analyzer:
+  errors:
+    invalid_annotation_target: ignore
+  language:
+    strict-casts: true
+    strict-raw-types: true
+
+linter:
+  rules:
+    # Gaya
+    always_declare_return_types: true
+    prefer_single_quotes: true
+    prefer_final_locals: true
+    prefer_const_constructors: true
+    prefer_const_constructors_in_immutables: true
+    prefer_const_declarations: true
+    prefer_const_literals_to_create_immutables: true
+    sort_child_properties_last: true
+    # `require_trailing_commas` sengaja tidak diaktifkan: formatter Dart modern
+    # sudah menyisipkan koma penutup sendiri, dan lint ini justru menghasilkan
+    # `),);` di tempat yang tidak dikehendaki.
+
+    # Keamanan & kebenaran
+    avoid_dynamic_calls: true
+    avoid_slow_async_io: true
+    cancel_subscriptions: true
+    close_sinks: true
+    only_throw_errors: true
+    unawaited_futures: true
+    use_build_context_synchronously: true
+
+    # Dokumentasi
+    package_api_docs: false
+    public_member_api_docs: false

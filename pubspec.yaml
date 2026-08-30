@@ -1,0 +1,78 @@
+name: jejak_cahaya
+description: Jejak Cahaya — Islamic Explorer. Permainan edukasi berbasis lokasi di area masjid.
+publish_to: 'none'
+version: 1.0.0+1
+
+environment:
+  sdk: '>=3.5.0 <4.0.0'
+  flutter: '>=3.24.0'
+
+dependencies:
+  flutter:
+    sdk: flutter
+  flutter_localizations:
+    sdk: flutter
+
+  # ── State management ──────────────────────────────────────────
+  flutter_bloc: ^8.1.6
+  bloc: ^8.1.4
+  equatable: ^2.0.5
+
+  # ── Dependency injection ──────────────────────────────────────
+  # get_it dipakai tanpa injectable: pendaftaran ditulis manual di satu berkas
+  # (core/di/injection.dart) agar grafik dependensi bisa dibaca langsung, dan
+  # agar codegen hanya diperlukan untuk model — bukan untuk menjalankan aplikasi.
+  get_it: ^8.0.3
+
+  # ── Jaringan ──────────────────────────────────────────────────
+  dio: ^5.7.0
+  pretty_dio_logger: ^1.4.0
+  connectivity_plus: ^6.1.0
+
+  # ── Penyimpanan ───────────────────────────────────────────────
+  flutter_secure_storage: ^9.2.2
+  shared_preferences: ^2.3.3
+
+  # ── Lokasi & peta ─────────────────────────────────────────────
+  geolocator: ^13.0.2
+  permission_handler: ^11.3.1
+  flutter_map: ^7.0.2
+  latlong2: ^0.9.1
+  flutter_compass: ^0.8.1
+
+  # ── Pemindai QR ───────────────────────────────────────────────
+  mobile_scanner: ^5.2.3
+
+  # ── Rute ──────────────────────────────────────────────────────
+  go_router: ^14.6.2
+
+  # ── Antarmuka ─────────────────────────────────────────────────
+  google_fonts: ^6.2.1
+  cached_network_image: ^3.4.1
+  shimmer: ^3.0.0
+  lottie: ^3.1.3
+  flutter_svg: ^2.0.14
+  confetti: ^0.8.0
+
+  # ── Utilitas ──────────────────────────────────────────────────
+  # Versi di-pin oleh flutter_localizations dari SDK — jangan naikkan sendiri.
+  intl: ^0.20.2
+  logger: ^2.5.0
+
+dev_dependencies:
+  flutter_test:
+    sdk: flutter
+  flutter_lints: ^5.0.0
+  bloc_test: ^9.1.7
+  mocktail: ^1.0.4
+
+flutter:
+  uses-material-design: true
+  assets:
+    - assets/images/
+    - assets/icons/
+    - assets/animations/
+  # Tipografi memakai Plus Jakarta Sans lewat paket google_fonts, sehingga tidak
+  # ada berkas font yang perlu dibundel. Bila nanti ingin memakai font Arab
+  # (mis. Amiri) untuk kaligrafi, letakkan .ttf-nya di assets/fonts/ lalu
+  # daftarkan di sini — mendeklarasikan font tanpa berkasnya akan menggagalkan build.
