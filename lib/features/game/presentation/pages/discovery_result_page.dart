@@ -10,6 +10,7 @@ import '../../../../app/theme/app_colors.dart';
 import '../../../../core/models/achievement.dart';
 import '../../../../core/models/scan_result.dart';
 import '../../../../core/widgets/app_widgets.dart';
+import '../../../../core/widgets/unlock_progress.dart';
 import '../../../auth/presentation/cubit/auth_cubit.dart';
 
 /// Layar "Kamu Mendapatkan!" setelah scan berhasil.
@@ -93,9 +94,31 @@ class _DiscoveryResultPageState extends State<DiscoveryResultPage> {
                         ),
                       ),
                       const SizedBox(height: 20),
-                      _CollectibleCard(result: result),
+                      // Kartunya masuk dengan membesar dan sedikit berputar —
+                      // meniru kartu yang dibalik, momen inti permainan koleksi.
+                      TweenAnimationBuilder<double>(
+                        tween: Tween<double>(begin: 0, end: 1),
+                        duration: const Duration(milliseconds: 700),
+                        curve: Curves.easeOutBack,
+                        builder: (context, value, child) => Transform.scale(
+                          scale: 0.85 + 0.15 * value,
+                          child: Transform.rotate(
+                            angle: (1 - value) * 0.06,
+                            child: Opacity(
+                                opacity: value.clamp(0, 1), child: child),
+                          ),
+                        ),
+                        child: _CollectibleCard(result: result),
+                      ),
                       const SizedBox(height: 24),
                       _XpChip(xp: result.xpEarned),
+                      const SizedBox(height: 22),
+                      // Gembok terbuka → titik berikutnya, masih tergembok.
+                      UnlockProgress(
+                        unlockedLabel: result.checkpointName,
+                        progress: result.progress,
+                        nextCheckpoint: result.nextCheckpoint,
+                      ),
                       if (result.levelUp != null) ...[
                         const SizedBox(height: 14),
                         _LevelUpBanner(levelUp: result.levelUp!),

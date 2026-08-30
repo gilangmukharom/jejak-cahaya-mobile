@@ -15,9 +15,11 @@ class ScanResult extends Equatable {
     required this.hasQuiz,
     required this.missionCompleted,
     required this.unlockedAchievements,
+    required this.progress,
     this.quizId,
     this.levelUp,
     this.missionProgress,
+    this.nextCheckpoint,
   });
 
   final Collectible collectible;
@@ -35,9 +37,16 @@ class ScanResult extends Equatable {
 
   final Mission? missionProgress;
 
+  /// Berapa titik sudah ditemukan dari total keseluruhan.
+  final ({int discovered, int total}) progress;
+
+  /// Titik berikutnya pada rantai main. Null bila semuanya sudah ditemukan.
+  final NextCheckpoint? nextCheckpoint;
+
   factory ScanResult.fromJson(Map<String, dynamic> json) {
     final discovery = Json.map(json['discovery']);
     final checkpoint = Json.map(json['checkpoint']);
+    final progress = Json.map(json['progress']);
 
     return ScanResult(
       collectible: Collectible.fromJson(Json.map(json['collectible'])),
@@ -55,11 +64,53 @@ class ScanResult extends Equatable {
       missionProgress: json['missionProgress'] is Map<String, dynamic>
           ? Mission.fromJson(json['missionProgress'] as Map<String, dynamic>)
           : null,
+      progress: (
+        discovered: Json.integer(progress['discovered']),
+        total: Json.integer(progress['total']),
+      ),
+      nextCheckpoint: json['nextCheckpoint'] is Map<String, dynamic>
+          ? NextCheckpoint.fromJson(
+              json['nextCheckpoint'] as Map<String, dynamic>)
+          : null,
     );
   }
 
   @override
   List<Object?> get props => [collectible, xpEarned, levelUp, missionCompleted];
+}
+
+/// Titik berikutnya yang harus didatangi pemain.
+///
+/// Nama tokohnya sengaja tidak disertakan backend — yang diungkap hanya lokasi
+/// fisiknya, karena mengetahui tokoh sebelum menemukannya menghilangkan inti
+/// permainan.
+class NextCheckpoint extends Equatable {
+  const NextCheckpoint({
+    required this.code,
+    required this.name,
+    required this.playOrder,
+    required this.missionTitle,
+    this.hint,
+  });
+
+  final String code;
+  final String name;
+
+  /// Posisi pada rantai main 1→N, bukan urutan kode checkpoint.
+  final int playOrder;
+  final String missionTitle;
+  final String? hint;
+
+  factory NextCheckpoint.fromJson(Map<String, dynamic> json) => NextCheckpoint(
+        code: Json.str(json['code']),
+        name: Json.str(json['name']),
+        playOrder: Json.integer(json['playOrder']),
+        missionTitle: Json.str(json['missionTitle']),
+        hint: Json.strOrNull(json['hint']),
+      );
+
+  @override
+  List<Object?> get props => [code, name, playOrder, missionTitle, hint];
 }
 
 class LevelUp extends Equatable {

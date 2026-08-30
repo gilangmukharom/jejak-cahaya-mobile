@@ -19,6 +19,7 @@ class Checkpoint extends Equatable {
     required this.radiusMeters,
     required this.isDiscovered,
     required this.collectiblePreview,
+    this.playOrder,
     this.hint,
     this.distanceM,
     this.bearingDeg,
@@ -33,6 +34,13 @@ class Checkpoint extends Equatable {
   final int radiusMeters;
   final bool isDiscovered;
   final CollectiblePreview collectiblePreview;
+
+  /// Posisi pada rantai main 1→N — angka inilah yang tampil di penanda peta,
+  /// dan angka yang sama tercetak pada berkas QR. Berbeda dari [code], yang
+  /// mengikuti urutan daftar tokoh dan bukan urutan kunjungan.
+  ///
+  /// Null bila checkpoint belum ditautkan ke misi mana pun.
+  final int? playOrder;
 
   final String? hint;
   final double? distanceM;
@@ -49,6 +57,7 @@ class Checkpoint extends Equatable {
         isDiscovered: Json.boolean(json['isDiscovered']),
         collectiblePreview:
             CollectiblePreview.fromJson(Json.map(json['collectible'])),
+        playOrder: Json.intOrNull(json['playOrder']),
         hint: Json.strOrNull(json['hint']),
         distanceM: Json.doubleOrNull(json['distanceM']),
         bearingDeg: Json.doubleOrNull(json['bearingDeg']),
@@ -63,8 +72,13 @@ class Checkpoint extends Equatable {
     return '${(distance / 1000).toStringAsFixed(1).replaceAll('.', ',')} km';
   }
 
+  /// Label untuk penanda peta: nomor urut kunjungan, atau tanda tanya bila
+  /// titik ini belum masuk rantai misi mana pun.
+  String get orderLabel => playOrder?.toString() ?? '?';
+
   @override
-  List<Object?> get props => [id, code, isDiscovered, distanceM, isInRange];
+  List<Object?> get props =>
+      [id, code, playOrder, isDiscovered, distanceM, isInRange];
 }
 
 /// Pratinjau collectible pada sebuah checkpoint.

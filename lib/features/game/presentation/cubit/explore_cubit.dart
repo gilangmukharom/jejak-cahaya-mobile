@@ -193,6 +193,10 @@ class ExploreCubit extends Cubit<ExploreState> {
         radiusMeters: checkpoint.radiusMeters,
         isDiscovered: checkpoint.isDiscovered,
         collectiblePreview: checkpoint.collectiblePreview,
+        // Wajib ikut disalin: objek ini dibuat ulang pada setiap pembaruan GPS,
+        // dan tanpa baris ini nomor pada penanda peta hilang begitu pemain
+        // bergerak beberapa meter.
+        playOrder: checkpoint.playOrder,
         hint: checkpoint.hint,
         distanceM: (distance * 10).round() / 10,
         bearingDeg: (bearing * 10).round() / 10,

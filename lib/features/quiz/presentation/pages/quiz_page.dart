@@ -1,3 +1,6 @@
+import 'dart:math' as math;
+
+import 'package:confetti/confetti.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:go_router/go_router.dart';
@@ -376,120 +379,190 @@ class _QuizFooter extends StatelessWidget {
 ///
 /// Penjelasan jawaban selalu ditampilkan, termasuk untuk soal yang sudah benar —
 /// tujuan quiz ini belajar, bukan sekadar menilai.
-class _ResultView extends StatelessWidget {
+class _ResultView extends StatefulWidget {
   const _ResultView({required this.result});
 
   final QuizResult result;
 
   @override
+  State<_ResultView> createState() => _ResultViewState();
+}
+
+class _ResultViewState extends State<_ResultView> {
+  ConfettiController? _confetti;
+
+  @override
+  void initState() {
+    super.initState();
+
+    // Konfeti hanya untuk yang lulus. Merayakan kegagalan membuat umpan
+    // baliknya membingungkan.
+    if (widget.result.passed) {
+      _confetti = ConfettiController(duration: const Duration(seconds: 2))
+        ..play();
+    }
+  }
+
+  @override
+  void dispose() {
+    _confetti?.dispose();
+    super.dispose();
+  }
+
+  @override
   Widget build(BuildContext context) {
+    final result = widget.result;
     final theme = Theme.of(context);
     final passed = result.passed;
     final accent = passed ? AppColors.success : AppColors.warning;
 
-    return SingleChildScrollView(
-      padding: const EdgeInsets.fromLTRB(24, 24, 24, 32),
-      child: Column(
-        children: [
-          Container(
-            width: 120,
-            height: 120,
-            alignment: Alignment.center,
-            decoration: BoxDecoration(
-              color: accent.withValues(alpha: 0.12),
-              shape: BoxShape.circle,
-              border: Border.all(color: accent, width: 3),
-            ),
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                Text(
-                  '${result.score}',
-                  style: theme.textTheme.displaySmall?.copyWith(
-                    color: accent,
-                    fontWeight: FontWeight.w900,
+    return Stack(
+      children: [
+        SingleChildScrollView(
+          padding: const EdgeInsets.fromLTRB(24, 24, 24, 32),
+          child: Column(
+            children: [
+              // Lingkaran skor: cincinnya terisi sambil angkanya berjalan naik,
+              // sehingga hasilnya terasa dihitung, bukan sekadar muncul.
+              TweenAnimationBuilder<double>(
+                tween: Tween<double>(begin: 0, end: result.score / 100),
+                duration: const Duration(milliseconds: 1100),
+                curve: Curves.easeOutCubic,
+                builder: (context, value, _) => SizedBox(
+                  width: 132,
+                  height: 132,
+                  child: Stack(
+                    alignment: Alignment.center,
+                    children: [
+                      SizedBox(
+                        width: 132,
+                        height: 132,
+                        child: CircularProgressIndicator(
+                          value: value,
+                          strokeWidth: 8,
+                          strokeCap: StrokeCap.round,
+                          backgroundColor: accent.withValues(alpha: 0.15),
+                          valueColor: AlwaysStoppedAnimation<Color>(accent),
+                        ),
+                      ),
+                      Column(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Text(
+                            '${(value * 100).round()}',
+                            style: theme.textTheme.displaySmall?.copyWith(
+                              color: accent,
+                              fontWeight: FontWeight.w900,
+                              height: 1,
+                            ),
+                          ),
+                          const SizedBox(height: 2),
+                          Text(
+                            'SKOR',
+                            style: theme.textTheme.labelSmall
+                                ?.copyWith(color: accent, letterSpacing: 2),
+                          ),
+                        ],
+                      ),
+                    ],
                   ),
                 ),
-                Text(
-                  'SKOR',
-                  style: theme.textTheme.labelSmall
-                      ?.copyWith(color: accent, letterSpacing: 2),
+              ),
+              const SizedBox(height: 24),
+              Text(
+                passed
+                    ? 'Alhamdulillah, Anda lulus!'
+                    : 'Belum lulus, coba lagi ya',
+                textAlign: TextAlign.center,
+                style: theme.textTheme.headlineSmall
+                    ?.copyWith(fontWeight: FontWeight.w800),
+              ),
+              const SizedBox(height: 8),
+              Text(
+                '${result.correctCount} dari ${result.totalQuestions} jawaban benar',
+                style: theme.textTheme.bodyMedium
+                    ?.copyWith(color: AppColors.textSecondary),
+              ),
+              if (result.xpEarned > 0) ...[
+                const SizedBox(height: 18),
+                Container(
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 22, vertical: 10),
+                  decoration: BoxDecoration(
+                    gradient: AppColors.goldGradient,
+                    borderRadius: BorderRadius.circular(999),
+                  ),
+                  child: Text(
+                    '+${result.xpEarned} XP',
+                    style: theme.textTheme.titleMedium?.copyWith(
+                      color: AppColors.primaryDark,
+                      fontWeight: FontWeight.w900,
+                    ),
+                  ),
                 ),
+              ] else if (passed) ...[
+                const SizedBox(height: 14),
+                Text(
+                  'XP untuk quiz ini sudah pernah Anda peroleh.',
+                  textAlign: TextAlign.center,
+                  style: theme.textTheme.bodySmall
+                      ?.copyWith(color: AppColors.textMuted),
+                ),
+              ],
+              const SizedBox(height: 32),
+              Align(
+                alignment: Alignment.centerLeft,
+                child: Text(
+                  'Pembahasan',
+                  style: theme.textTheme.titleMedium
+                      ?.copyWith(fontWeight: FontWeight.w800),
+                ),
+              ),
+              const SizedBox(height: 12),
+              for (final correction in result.corrections) ...[
+                _CorrectionCard(correction: correction),
+                const SizedBox(height: 10),
+              ],
+              const SizedBox(height: 20),
+              if (!passed)
+                SizedBox(
+                  width: double.infinity,
+                  child: OutlinedButton.icon(
+                    onPressed: () => context.read<QuizCubit>().retry(),
+                    icon: const Icon(Icons.refresh_rounded, size: 20),
+                    label: const Text('Coba Lagi'),
+                  ),
+                ),
+              const SizedBox(height: 12),
+              SizedBox(
+                width: double.infinity,
+                child: ElevatedButton(
+                  onPressed: () => context.go(AppRoutes.explore),
+                  child: const Text('Lanjut Menjelajah'),
+                ),
+              ),
+            ],
+          ),
+        ),
+        if (_confetti != null)
+          Align(
+            alignment: Alignment.topCenter,
+            child: ConfettiWidget(
+              confettiController: _confetti!,
+              blastDirection: math.pi / 2,
+              emissionFrequency: 0.05,
+              numberOfParticles: 14,
+              gravity: 0.25,
+              shouldLoop: false,
+              colors: const [
+                AppColors.success,
+                AppColors.gold,
+                AppColors.goldLight,
+                Colors.white,
               ],
             ),
           ),
-          const SizedBox(height: 24),
-          Text(
-            passed ? 'Alhamdulillah, Anda lulus!' : 'Belum lulus, coba lagi ya',
-            textAlign: TextAlign.center,
-            style: theme.textTheme.headlineSmall
-                ?.copyWith(fontWeight: FontWeight.w800),
-          ),
-          const SizedBox(height: 8),
-          Text(
-            '${result.correctCount} dari ${result.totalQuestions} jawaban benar',
-            style: theme.textTheme.bodyMedium
-                ?.copyWith(color: AppColors.textSecondary),
-          ),
-          if (result.xpEarned > 0) ...[
-            const SizedBox(height: 18),
-            Container(
-              padding: const EdgeInsets.symmetric(horizontal: 22, vertical: 10),
-              decoration: BoxDecoration(
-                gradient: AppColors.goldGradient,
-                borderRadius: BorderRadius.circular(999),
-              ),
-              child: Text(
-                '+${result.xpEarned} XP',
-                style: theme.textTheme.titleMedium?.copyWith(
-                  color: AppColors.primaryDark,
-                  fontWeight: FontWeight.w900,
-                ),
-              ),
-            ),
-          ] else if (passed) ...[
-            const SizedBox(height: 14),
-            Text(
-              'XP untuk quiz ini sudah pernah Anda peroleh.',
-              textAlign: TextAlign.center,
-              style: theme.textTheme.bodySmall
-                  ?.copyWith(color: AppColors.textMuted),
-            ),
-          ],
-          const SizedBox(height: 32),
-          Align(
-            alignment: Alignment.centerLeft,
-            child: Text(
-              'Pembahasan',
-              style: theme.textTheme.titleMedium
-                  ?.copyWith(fontWeight: FontWeight.w800),
-            ),
-          ),
-          const SizedBox(height: 12),
-          for (final correction in result.corrections) ...[
-            _CorrectionCard(correction: correction),
-            const SizedBox(height: 10),
-          ],
-          const SizedBox(height: 20),
-          if (!passed)
-            SizedBox(
-              width: double.infinity,
-              child: OutlinedButton.icon(
-                onPressed: () => context.read<QuizCubit>().retry(),
-                icon: const Icon(Icons.refresh_rounded, size: 20),
-                label: const Text('Coba Lagi'),
-              ),
-            ),
-          const SizedBox(height: 12),
-          SizedBox(
-            width: double.infinity,
-            child: ElevatedButton(
-              onPressed: () => context.go(AppRoutes.explore),
-              child: const Text('Lanjut Menjelajah'),
-            ),
-          ),
-        ],
-      ),
+      ],
     );
   }
 }

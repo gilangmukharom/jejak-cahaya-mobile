@@ -3,21 +3,81 @@ import 'package:go_router/go_router.dart';
 
 import '../../../../app/router/app_routes.dart';
 import '../../../../app/theme/app_colors.dart';
+import '../../../../core/di/injection.dart';
+import '../../../../core/storage/app_preferences.dart';
+import '../../../../core/widgets/coach_mark.dart';
 
 /// Cangkang navigasi bawah yang membungkus keempat tab utama.
 ///
 /// Memakai [StatefulNavigationShell] agar state tiap tab tetap hidup: berpindah
 /// dari peta ke koleksi dan kembali tidak memulai ulang pencarian sinyal GPS.
-class HomeShell extends StatelessWidget {
+class HomeShell extends StatefulWidget {
   const HomeShell({required this.navigationShell, super.key});
 
   final StatefulNavigationShell navigationShell;
 
   @override
+  State<HomeShell> createState() => _HomeShellState();
+}
+
+class _HomeShellState extends State<HomeShell> {
+  // Kunci ini menandai tombol yang disorot penuntun sekali-jalan.
+  final GlobalKey _scanKey = GlobalKey();
+  final GlobalKey _collectionKey = GlobalKey();
+  final GlobalKey _missionKey = GlobalKey();
+
+  @override
+  void initState() {
+    super.initState();
+
+    final preferences = sl<AppPreferences>();
+    if (preferences.hasSeenOnboarding) return;
+
+    // Ditunda sampai frame pertama selesai: posisi tombol baru bisa dibaca
+    // setelah layout, dan Overlay belum tersedia di dalam initState.
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted) return;
+
+      CoachMarkOverlay.show(
+        context,
+        steps: [
+          CoachStep(
+            key: _scanKey,
+            title: 'Tombol Pindai',
+            description:
+                'Inilah satu-satunya cara memperoleh tokoh. Datangi checkpoint, '
+                'tekan tombol ini, lalu arahkan kamera ke QR di lokasi.',
+          ),
+          CoachStep(
+            key: _missionKey,
+            title: 'Misi',
+            description:
+                'Urutan perjalananmu. Titik harus didatangi berurutan — misi '
+                'berikutnya terbuka setelah misi sebelumnya tuntas.',
+          ),
+          CoachStep(
+            key: _collectionKey,
+            title: 'Koleksi',
+            description:
+                'Tokoh yang sudah kamu temukan tersimpan di sini, lengkap '
+                'dengan kisah dan quiz-nya.',
+          ),
+        ],
+        onFinish: () => preferences.setOnboardingSeen(),
+      );
+    });
+  }
+
+  @override
   Widget build(BuildContext context) {
     return Scaffold(
-      body: navigationShell,
-      bottomNavigationBar: _BottomNavBar(navigationShell: navigationShell),
+      body: widget.navigationShell,
+      bottomNavigationBar: _BottomNavBar(
+        navigationShell: widget.navigationShell,
+        scanKey: _scanKey,
+        collectionKey: _collectionKey,
+        missionKey: _missionKey,
+      ),
     );
   }
 }
@@ -33,9 +93,17 @@ class HomeShell extends StatelessWidget {
 /// Di sini tombol pindai menempati slotnya sendiri di dalam baris, jadi tidak
 /// ada satu pun area sentuh yang tumpang tindih.
 class _BottomNavBar extends StatelessWidget {
-  const _BottomNavBar({required this.navigationShell});
+  const _BottomNavBar({
+    required this.navigationShell,
+    required this.scanKey,
+    required this.collectionKey,
+    required this.missionKey,
+  });
 
   final StatefulNavigationShell navigationShell;
+  final GlobalKey scanKey;
+  final GlobalKey collectionKey;
+  final GlobalKey missionKey;
 
   static const double _barHeight = 68;
 
@@ -93,15 +161,17 @@ class _BottomNavBar extends StatelessWidget {
               for (final item in _leftItems)
                 Expanded(
                   child: _NavButton(
+                    key: item.branch == 1 ? collectionKey : null,
                     item: item,
                     isSelected: navigationShell.currentIndex == item.branch,
                     onTap: () => _onTap(item.branch),
                   ),
                 ),
-              const Expanded(child: _ScanButton()),
+              Expanded(child: _ScanButton(key: scanKey)),
               for (final item in _rightItems)
                 Expanded(
                   child: _NavButton(
+                    key: item.branch == 2 ? missionKey : null,
                     item: item,
                     isSelected: navigationShell.currentIndex == item.branch,
                     onTap: () => _onTap(item.branch),
@@ -134,6 +204,7 @@ class _NavButton extends StatelessWidget {
     required this.item,
     required this.isSelected,
     required this.onTap,
+    super.key,
   });
 
   final _NavItem item;
@@ -178,7 +249,7 @@ class _NavButton extends StatelessWidget {
 /// Aksi utama permainan: satu-satunya cara memperoleh penemuan, jadi diberi
 /// bobot visual paling besar di antara kelima slot.
 class _ScanButton extends StatelessWidget {
-  const _ScanButton();
+  const _ScanButton({super.key});
 
   @override
   Widget build(BuildContext context) {

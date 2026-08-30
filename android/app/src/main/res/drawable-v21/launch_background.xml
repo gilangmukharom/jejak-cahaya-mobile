@@ -1,12 +1,9 @@
 <?xml version="1.0" encoding="utf-8"?>
-<!-- Modify this file to customize your launch splash screen -->
 <layer-list xmlns:android="http://schemas.android.com/apk/res/android">
-    <item android:drawable="?android:colorBackground" />
-
-    <!-- You can insert your own image assets here -->
-    <!-- <item>
-        <bitmap
-            android:gravity="center"
-            android:src="@mipmap/launch_image" />
-    </item> -->
+    <!--
+      Bawaannya `?android:colorBackground`, yang mengikuti tema perangkat —
+      putih pada mode terang. Dipatok ke warna merek agar peluncurannya menyatu
+      dengan SplashPage, bukan berkedip putih lebih dulu.
+    -->
+    <item android:drawable="@color/launch_background" />
 </layer-list>

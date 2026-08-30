@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!--
+      Warna layar peluncuran Android, disamakan dengan latar SplashPage
+      (AppColors.primaryDark). Bawaannya putih, sehingga sebelum Flutter selesai
+      dimuat layar berkedip putih terang lalu berganti hijau gelap — kedipan itu
+      yang paling terasa murah saat aplikasi dibuka.
+    -->
+    <color name="launch_background">#06251C</color>
+</resources>

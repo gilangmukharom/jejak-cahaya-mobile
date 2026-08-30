@@ -249,6 +249,15 @@ class _MapPanel extends StatelessWidget {
   }
 }
 
+/// Penanda checkpoint di peta.
+///
+/// Menampilkan **nomor urut kunjungan**, bukan ikon QR: peta harus langsung
+/// memperlihatkan rutenya — titik 1 dulu, lalu 2, dan seterusnya. Nomor yang
+/// sama tercetak pada berkas QR, sehingga apa yang dilihat di peta cocok dengan
+/// stiker yang tertempel di dinding.
+///
+/// Titik yang sudah ditemukan berubah hijau dengan centang kecil, agar rute
+/// yang tersisa tetap terbaca sekilas.
 class _CheckpointPin extends StatelessWidget {
   const _CheckpointPin({required this.checkpoint});
 
@@ -259,6 +268,7 @@ class _CheckpointPin extends StatelessWidget {
     final discovered = checkpoint.isDiscovered;
 
     return Container(
+      alignment: Alignment.center,
       decoration: BoxDecoration(
         color: discovered ? AppColors.success : AppColors.primary,
         shape: BoxShape.circle,
@@ -271,11 +281,23 @@ class _CheckpointPin extends StatelessWidget {
           ),
         ],
       ),
-      child: Icon(
-        discovered ? Icons.check_rounded : Icons.qr_code_2_rounded,
-        size: 18,
-        color: discovered ? Colors.white : AppColors.gold,
-      ),
+      child: discovered
+          ? const Icon(Icons.check_rounded, size: 18, color: Colors.white)
+          : FittedBox(
+              fit: BoxFit.scaleDown,
+              child: Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 3),
+                child: Text(
+                  checkpoint.orderLabel,
+                  style: const TextStyle(
+                    color: AppColors.gold,
+                    fontWeight: FontWeight.w900,
+                    fontSize: 15,
+                    height: 1,
+                  ),
+                ),
+              ),
+            ),
     );
   }
 }
@@ -436,21 +458,34 @@ class _CheckpointTile extends StatelessWidget {
           ),
           child: Row(
             children: [
+              // Nomor urut kunjungan, sama dengan penanda di peta dan berkas QR.
               Container(
                 width: 46,
                 height: 46,
+                alignment: Alignment.center,
                 decoration: BoxDecoration(
                   color: discovered
                       ? AppColors.success.withValues(alpha: 0.12)
-                      : AppColors.surfaceMuted,
+                      : inRange
+                          ? AppColors.gold.withValues(alpha: 0.16)
+                          : AppColors.surfaceMuted,
                   borderRadius: BorderRadius.circular(14),
                 ),
-                child: Icon(
-                  discovered
-                      ? Icons.verified_rounded
-                      : Icons.location_on_outlined,
-                  color: discovered ? AppColors.success : AppColors.textMuted,
-                ),
+                child: discovered
+                    ? const Icon(
+                        Icons.verified_rounded,
+                        color: AppColors.success,
+                      )
+                    : Text(
+                        checkpoint.orderLabel,
+                        style: theme.textTheme.titleMedium?.copyWith(
+                          fontWeight: FontWeight.w900,
+                          color: inRange
+                              ? AppColors.goldDark
+                              : AppColors.textSecondary,
+                          height: 1,
+                        ),
+                      ),
               ),
               const SizedBox(width: 14),
               Expanded(

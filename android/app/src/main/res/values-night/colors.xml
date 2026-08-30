@@ -1,0 +1,5 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Sama dengan mode terang: identitas mereknya memang gelap. -->
+    <color name="launch_background">#06251C</color>
+</resources>

@@ -71,12 +71,16 @@ class CheckpointDetailSheet extends StatelessWidget {
                       color: accent.withValues(alpha: 0.14),
                       borderRadius: BorderRadius.circular(14),
                     ),
-                    child: Icon(
-                      discovered
-                          ? Icons.verified_rounded
-                          : Icons.location_on_outlined,
-                      color: accent,
-                    ),
+                    child: discovered
+                        ? Icon(Icons.verified_rounded, color: accent)
+                        : Text(
+                            checkpoint.orderLabel,
+                            style: theme.textTheme.titleMedium?.copyWith(
+                              fontWeight: FontWeight.w900,
+                              color: accent,
+                              height: 1,
+                            ),
+                          ),
                   ),
                   const SizedBox(width: 14),
                   Expanded(
@@ -90,7 +94,9 @@ class CheckpointDetailSheet extends StatelessWidget {
                         ),
                         const SizedBox(height: 2),
                         Text(
-                          checkpoint.code,
+                          // Nomor urut disebut lebih dulu: itulah yang dicari
+                          // pemain saat mencocokkan dengan stiker QR.
+                          'Titik ke-${checkpoint.orderLabel} · ${checkpoint.code}',
                           style: theme.textTheme.labelMedium
                               ?.copyWith(color: AppColors.textMuted),
                         ),
