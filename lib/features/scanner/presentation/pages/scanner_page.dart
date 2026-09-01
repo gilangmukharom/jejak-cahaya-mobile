@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:go_router/go_router.dart';
@@ -38,19 +40,77 @@ class _ScannerView extends StatefulWidget {
   State<_ScannerView> createState() => _ScannerViewState();
 }
 
-class _ScannerViewState extends State<_ScannerView> {
+class _ScannerViewState extends State<_ScannerView> with WidgetsBindingObserver {
   final MobileScannerController _controller = MobileScannerController(
     detectionSpeed: DetectionSpeed.noDuplicates,
     formats: const [BarcodeFormat.qrCode],
   );
 
   @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addObserver(this);
+  }
+
+  @override
   void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
     _controller.dispose();
     super.dispose();
   }
 
+  /// Menyalakan ulang kamera setiap kali aplikasi kembali ke depan.
+  ///
+  /// Ini wajib ditangani sendiri, dan alasannya tidak terlihat dari luar:
+  /// widget `MobileScanner` sebenarnya punya penanganan siklus hidup, tetapi
+  /// baris pertamanya berbunyi `if (widget.controller != null) return;` —
+  /// penanganan itu mati begitu kita menyediakan controller sendiri, dan
+  /// halaman ini memang menyediakannya (untuk tombol senter dan ganti kamera).
+  ///
+  /// Tanpa ini, sistem operasi melepas kamera setiap kali aplikasi berpindah ke
+  /// latar, dan tidak ada yang menyalakannya kembali. Yang paling sering
+  /// terkena justru pemain baru: dialog izin kamera **membuat aplikasi
+  /// berpindah ke latar**, sehingga setelah izin diberikan yang tampil adalah
+  /// layar hitam — seolah izinnya tidak berpengaruh apa pun.
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    // Controller yang belum siap tidak boleh disentuh: dialog izin memicu
+    // perubahan siklus hidup justru ketika `start()` masih berjalan.
+    if (!_controller.value.isInitialized) return;
+
+    switch (state) {
+      case AppLifecycleState.resumed:
+        unawaited(_controller.start());
+      case AppLifecycleState.inactive:
+        unawaited(_controller.stop());
+      case AppLifecycleState.detached:
+      case AppLifecycleState.hidden:
+      case AppLifecycleState.paused:
+        break;
+    }
+  }
+
+  /// Mencoba membuka kamera lagi setelah gagal.
+  ///
+  /// Dipakai tombol pada layar galat. Jalur ini penting untuk kasus izin baru
+  /// diberikan: percobaan pertama sudah terlanjur gagal, dan tanpa cara mencoba
+  /// ulang satu-satunya jalan keluar adalah menutup aplikasi.
+  Future<void> _retry() async {
+    try {
+      await _controller.start();
+    } on Object {
+      // Kegagalan berulang tetap tergambar oleh `errorBuilder`; tidak ada yang
+      // perlu ditambahkan di sini.
+    }
+  }
+
   void _onDetect(BarcodeCapture capture) {
+    // Penjagaan dibaca di sini, bukan dengan menukar callback saat build.
+    // `MobileScanner` menangkap `onDetect` sekali saja di initState dan tidak
+    // punya `didUpdateWidget`, jadi callback yang ditukar belakangan tidak
+    // pernah benar-benar terpasang.
+    if (context.read<ScannerCubit>().state.isBusy) return;
+
     final payload = capture.barcodes
         .map((barcode) => barcode.rawValue)
         .whereType<String>()
@@ -86,12 +146,9 @@ class _ScannerViewState extends State<_ScannerView> {
             children: [
               MobileScanner(
                 controller: _controller,
-                // Berhenti memproses frame selama validasi berjalan — kamera
-                // memancarkan puluhan frame per detik, dan tanpa jeda ini satu
-                // QR akan terkirim berkali-kali.
-                onDetect: state.isBusy ? (_) {} : _onDetect,
+                onDetect: _onDetect,
                 errorBuilder: (context, error, child) =>
-                    _CameraErrorView(error: error),
+                    _CameraErrorView(error: error, onRetry: _retry),
               ),
               const _ScannerOverlay(),
               _TopBar(controller: _controller),
@@ -335,13 +392,24 @@ class _RejectionSheet extends StatelessWidget {
   }
 }
 
+/// Ditampilkan ketika kamera gagal dibuka.
+///
+/// Sebelumnya layar ini hanya menyediakan tombol "Kembali", sehingga setiap
+/// kegagalan menjadi jalan buntu — termasuk kegagalan yang penyebabnya sudah
+/// hilang, seperti izin yang baru saja diberikan. Sekarang jalan keluarnya
+/// selalu ada: mencoba lagi tanpa meninggalkan layar, dan membuka pengaturan
+/// bila memang izinnya yang perlu diubah.
 class _CameraErrorView extends StatelessWidget {
-  const _CameraErrorView({required this.error});
+  const _CameraErrorView({required this.error, required this.onRetry});
 
   final MobileScannerException error;
+  final Future<void> Function() onRetry;
 
   @override
   Widget build(BuildContext context) {
+    final isPermissionProblem =
+        error.errorCode == MobileScannerErrorCode.permissionDenied;
+
     final message = switch (error.errorCode) {
       MobileScannerErrorCode.permissionDenied =>
         'Izin kamera ditolak. Aktifkan akses kamera di pengaturan aplikasi untuk memindai QR.',
@@ -371,6 +439,34 @@ class _CameraErrorView extends StatelessWidget {
                 style: const TextStyle(color: Colors.white70, fontSize: 15),
               ),
               const SizedBox(height: 24),
+              if (isPermissionProblem)
+                FilledButton.icon(
+                  // `LocationService.openSettings` membuka halaman rincian
+                  // aplikasi di pengaturan sistem — tempat SELURUH izin diatur,
+                  // termasuk kamera. Namanya memang menyebut lokasi karena di
+                  // situlah ia pertama dibutuhkan; memakainya di sini lebih
+                  // ringan daripada menambah paket izin baru hanya untuk satu
+                  // tombol.
+                  onPressed: () => sl<LocationService>().openSettings(),
+                  icon: const Icon(Icons.settings_rounded),
+                  label: const Text('Buka Pengaturan'),
+                )
+              else
+                FilledButton.icon(
+                  onPressed: onRetry,
+                  icon: const Icon(Icons.refresh_rounded),
+                  label: const Text('Coba lagi'),
+                ),
+              const SizedBox(height: 10),
+              if (isPermissionProblem)
+                // Setelah izin diubah di pengaturan, kamera perlu dinyalakan
+                // ulang dari sini — kembali ke halaman ini saja tidak cukup
+                // karena percobaan pertamanya sudah terlanjur gagal.
+                TextButton(
+                  onPressed: onRetry,
+                  style: TextButton.styleFrom(foregroundColor: AppColors.gold),
+                  child: const Text('Sudah diizinkan — coba lagi'),
+                ),
               OutlinedButton(
                 onPressed: () => context.pop(),
                 style: OutlinedButton.styleFrom(
