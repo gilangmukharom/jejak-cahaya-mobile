@@ -30,6 +30,17 @@ android {
             // TODO: Add your own signing config for the release build.
             // Signing with the debug keys for now, so `flutter run --release` works.
             signingConfig = signingConfigs.getByName("debug")
+
+            // R8 berjalan pada build release dan TIDAK berjalan pada build
+            // debug. Itulah mengapa kamera bisa menyala mulus lewat
+            // `flutter run` tetapi mati pada APK hasil build: kelas CameraX
+            // dan ML Kit yang hanya dipanggil lewat refleksi tidak terlihat
+            // oleh R8, lalu dibuang. Aturan penjagaannya ada di
+            // proguard-rules.pro di folder yang sama.
+            proguardFiles(
+                getDefaultProguardFile("proguard-android-optimize.txt"),
+                "proguard-rules.pro",
+            )
         }
     }
 }

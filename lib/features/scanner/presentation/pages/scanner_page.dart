@@ -40,54 +40,16 @@ class _ScannerView extends StatefulWidget {
   State<_ScannerView> createState() => _ScannerViewState();
 }
 
-class _ScannerViewState extends State<_ScannerView> with WidgetsBindingObserver {
+class _ScannerViewState extends State<_ScannerView> {
   final MobileScannerController _controller = MobileScannerController(
     detectionSpeed: DetectionSpeed.noDuplicates,
     formats: const [BarcodeFormat.qrCode],
   );
 
   @override
-  void initState() {
-    super.initState();
-    WidgetsBinding.instance.addObserver(this);
-  }
-
-  @override
   void dispose() {
-    WidgetsBinding.instance.removeObserver(this);
-    _controller.dispose();
+    unawaited(_controller.dispose());
     super.dispose();
-  }
-
-  /// Menyalakan ulang kamera setiap kali aplikasi kembali ke depan.
-  ///
-  /// Ini wajib ditangani sendiri, dan alasannya tidak terlihat dari luar:
-  /// widget `MobileScanner` sebenarnya punya penanganan siklus hidup, tetapi
-  /// baris pertamanya berbunyi `if (widget.controller != null) return;` —
-  /// penanganan itu mati begitu kita menyediakan controller sendiri, dan
-  /// halaman ini memang menyediakannya (untuk tombol senter dan ganti kamera).
-  ///
-  /// Tanpa ini, sistem operasi melepas kamera setiap kali aplikasi berpindah ke
-  /// latar, dan tidak ada yang menyalakannya kembali. Yang paling sering
-  /// terkena justru pemain baru: dialog izin kamera **membuat aplikasi
-  /// berpindah ke latar**, sehingga setelah izin diberikan yang tampil adalah
-  /// layar hitam — seolah izinnya tidak berpengaruh apa pun.
-  @override
-  void didChangeAppLifecycleState(AppLifecycleState state) {
-    // Controller yang belum siap tidak boleh disentuh: dialog izin memicu
-    // perubahan siklus hidup justru ketika `start()` masih berjalan.
-    if (!_controller.value.isInitialized) return;
-
-    switch (state) {
-      case AppLifecycleState.resumed:
-        unawaited(_controller.start());
-      case AppLifecycleState.inactive:
-        unawaited(_controller.stop());
-      case AppLifecycleState.detached:
-      case AppLifecycleState.hidden:
-      case AppLifecycleState.paused:
-        break;
-    }
   }
 
   /// Mencoba membuka kamera lagi setelah gagal.
@@ -97,10 +59,20 @@ class _ScannerViewState extends State<_ScannerView> with WidgetsBindingObserver 
   /// ulang satu-satunya jalan keluar adalah menutup aplikasi.
   Future<void> _retry() async {
     try {
+      // Dihentikan lebih dulu, bukan langsung dinyalakan. `start()` memilih
+      // keluar diam-diam ketika galat terakhirnya adalah izin ditolak, dan
+      // galat itu baru dibersihkan oleh `stop()`. Tanpa langkah ini tombol
+      // coba-lagi tidak melakukan apa pun justru pada kasus yang paling
+      // membutuhkannya.
+      await _controller.stop();
+    } on Object {
+      // Menghentikan kamera yang memang belum menyala bukan kegagalan.
+    }
+
+    try {
       await _controller.start();
     } on Object {
-      // Kegagalan berulang tetap tergambar oleh `errorBuilder`; tidak ada yang
-      // perlu ditambahkan di sini.
+      // Kegagalan berulang tetap tergambar oleh errorBuilder.
     }
   }
 
@@ -147,11 +119,25 @@ class _ScannerViewState extends State<_ScannerView> with WidgetsBindingObserver 
               MobileScanner(
                 controller: _controller,
                 onDetect: _onDetect,
-                errorBuilder: (context, error, child) =>
+                // Bingkai bidik dan tombol senter dititipkan ke overlayBuilder
+                // supaya keduanya hanya tergambar ketika kamera benar-benar
+                // hidup. Sebelumnya keduanya ditumpuk begitu saja di atas
+                // MobileScanner, sehingga ketika kamera gagal dibuka layar
+                // galatnya tertimbun bingkai kuning dan tulisan SCAN DI SINI —
+                // menyuruh pemain mengarahkan kamera yang justru tidak menyala.
+                overlayBuilder: (context, constraints) => Stack(
+                  fit: StackFit.expand,
+                  children: [
+                    const _ScannerOverlay(),
+                    _TorchButton(controller: _controller),
+                  ],
+                ),
+                errorBuilder: (context, error) =>
                     _CameraErrorView(error: error, onRetry: _retry),
               ),
-              const _ScannerOverlay(),
-              _TopBar(controller: _controller),
+              // Tombol tutup berada di luar overlay: pemain harus selalu bisa
+              // keluar, termasuk ketika kamera gagal atau masih menyiapkan diri.
+              const _CloseButton(),
               if (state.stage == ScannerStage.validating)
                 const _ValidatingOverlay(),
               if (state.stage == ScannerStage.rejected && state.failure != null)
@@ -241,31 +227,71 @@ class _ScannerOverlay extends StatelessWidget {
   }
 }
 
-class _TopBar extends StatelessWidget {
-  const _TopBar({required this.controller});
+class _CloseButton extends StatelessWidget {
+  const _CloseButton();
+
+  @override
+  Widget build(BuildContext context) {
+    return SafeArea(
+      child: Align(
+        alignment: Alignment.topLeft,
+        child: Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+          child: IconButton(
+            onPressed: () => context.pop(),
+            icon: const Icon(Icons.close_rounded, color: Colors.white),
+            tooltip: 'Tutup',
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+/// Tombol senter yang mengikuti keadaan kamera sesungguhnya.
+///
+/// Sebelumnya ikonnya tetap dan tombolnya selalu bisa ditekan, sehingga pemain
+/// menekannya berulang kali tanpa tahu apakah ada yang terjadi — dan ketika
+/// kamera memang belum menyala, atau perangkatnya tidak punya senter, memang
+/// tidak akan pernah terjadi apa-apa.
+class _TorchButton extends StatelessWidget {
+  const _TorchButton({required this.controller});
 
   final MobileScannerController controller;
 
   @override
   Widget build(BuildContext context) {
     return SafeArea(
-      child: Padding(
-        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-        child: Row(
-          mainAxisAlignment: MainAxisAlignment.spaceBetween,
-          children: [
-            IconButton(
-              onPressed: () => context.pop(),
-              icon: const Icon(Icons.close_rounded, color: Colors.white),
-              tooltip: 'Tutup',
-            ),
-            IconButton(
-              onPressed: controller.toggleTorch,
-              icon:
-                  const Icon(Icons.flashlight_on_rounded, color: Colors.white),
-              tooltip: 'Nyalakan senter',
-            ),
-          ],
+      child: Align(
+        alignment: Alignment.topRight,
+        child: Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+          child: ValueListenableBuilder<MobileScannerState>(
+            valueListenable: controller,
+            builder: (context, state, child) {
+              final unavailable = state.torchState == TorchState.unavailable;
+              final isOn = state.torchState == TorchState.on;
+
+              return IconButton(
+                onPressed: unavailable ? null : controller.toggleTorch,
+                icon: Icon(
+                  isOn
+                      ? Icons.flashlight_on_rounded
+                      : Icons.flashlight_off_rounded,
+                  color: unavailable
+                      ? Colors.white24
+                      : isOn
+                          ? AppColors.gold
+                          : Colors.white,
+                ),
+                tooltip: unavailable
+                    ? 'Senter tidak tersedia di perangkat ini'
+                    : isOn
+                        ? 'Matikan senter'
+                        : 'Nyalakan senter',
+              );
+            },
+          ),
         ),
       ),
     );

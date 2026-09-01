@@ -1,7 +1,7 @@
 name: jejak_cahaya
 description: Jejak Cahaya — Islamic Explorer. Permainan edukasi berbasis lokasi di area masjid.
 publish_to: 'none'
-version: 1.0.2+3
+version: 1.0.3+4
 
 environment:
   sdk: '>=3.5.0 <4.0.0'
@@ -57,7 +57,13 @@ dependencies:
   path_provider: ^2.1.5
 
   # ── Pemindai QR ───────────────────────────────────────────────
-  mobile_scanner: ^5.2.3
+  # Versi 5.x membawa CameraX 1.3.3 dan dibangun untuk compileSdk 34, sementara
+  # aplikasi ini menargetkan SDK 36. Pada perangkat Android modern selisih itu
+  # membuat kamera gagal di-bind dan gagalnya muncul sebagai `genericError` —
+  # pesan yang tidak menyebut penyebabnya sama sekali. Versi 7.x memakai
+  # CameraX 1.6.1 dengan compileSdk 36, dan sekaligus menangani siklus hidup
+  # aplikasi meski controller disediakan sendiri.
+  mobile_scanner: ^7.4.0
 
   # ── Rute ──────────────────────────────────────────────────────
   go_router: ^14.6.2
