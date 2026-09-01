@@ -123,11 +123,29 @@ indikator "sudah dekat". Keputusan yang mengikat tetap diambil server. Menjaga
 keduanya identik memastikan layar tidak pernah menjanjikan sesuatu yang kemudian
 ditolak backend.
 
-### Peta memakai OpenStreetMap
+### Peta digambar sendiri dari data OpenStreetMap yang dibundel
 
-`flutter_map` dipilih daripada `google_maps_flutter` agar tidak perlu API key
-dan penyiapan billing — hambatan yang tidak sepadan untuk peta berskala satu
-halaman masjid. Bila kelak butuh citra satelit, ganti `TileLayer`-nya saja.
+Layar penjelajahan memenuhi seluruh layar dan berperilaku seperti peta
+permainan: kamera mengikuti pemain, ikut berputar ke arah ia berjalan, dan
+antarmuka lain mengambang di atasnya.
+
+Petanya **tidak** menarik gambar jadi dari server tile. Yang dibundel adalah
+`assets/map/basemap.pmtiles` — data vektor Protomaps (turunan OpenStreetMap)
+untuk area bermain — lalu digambar di perangkat memakai `vector_map_tiles`
+dengan gaya di `lib/app/theme/game_map_style.dart`. Tiga akibatnya:
+
+- **Tanpa kunci API, tanpa biaya berulang.** Tidak ada layanan pihak ketiga yang
+  dihubungi. Perlu dicatat bahwa `tile.openstreetmap.org` — yang dipakai versi
+  sebelumnya — melarang pemakaian oleh aplikasi yang didistribusikan, jadi
+  pendekatan ini sekaligus menyelesaikan persoalan itu.
+- **Peta berjalan tanpa jaringan.** Pelataran masjid kerap bersinyal buruk.
+- **Paletnya ditentukan sendiri:** rumput hijau, air toska, jalan krem, dan
+  seluruh label POI dimatikan — tidak ada teks di atas peta selain milik
+  permainan sendiri.
+
+Cara membuat ulang arsipnya untuk masjid baru ada di
+[`assets/map/README.md`](assets/map/README.md). Atribusi OpenStreetMap wajib
+ditampilkan (ODbL) dan sudah terpasang lewat `MapAttribution`.
 
 ### Geofence terus dipantau, bukan sekali cek
 

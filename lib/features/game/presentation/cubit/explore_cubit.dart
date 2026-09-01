@@ -1,3 +1,4 @@
+import '../../../../core/bloc/safe_emit.dart';
 import 'dart:async';
 
 import 'package:equatable/equatable.dart';
@@ -72,7 +73,7 @@ class ExploreState extends Equatable {
 }
 
 /// Mengendalikan layar peta & radar: checkpoint di sekitar dan misi yang aktif.
-class ExploreCubit extends Cubit<ExploreState> {
+class ExploreCubit extends Cubit<ExploreState> with SafeEmit<ExploreState> {
   ExploreCubit({
     required GameRepository repository,
     required LocationService locationService,

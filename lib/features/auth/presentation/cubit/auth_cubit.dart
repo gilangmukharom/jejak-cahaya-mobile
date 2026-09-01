@@ -1,6 +1,7 @@
 import 'package:equatable/equatable.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 
+import '../../../../core/bloc/safe_emit.dart';
 import '../../../../core/error/failure_mapper.dart';
 import '../../../../core/error/failures.dart';
 import '../../../../core/models/user.dart';
@@ -51,7 +52,7 @@ class AuthState extends Equatable {
 /// Router mengamati cubit ini untuk memutuskan apakah pengguna diarahkan ke
 /// layar masuk atau ke permainan, sehingga tidak ada layar yang perlu memeriksa
 /// status autentikasi sendiri.
-class AuthCubit extends Cubit<AuthState> {
+class AuthCubit extends Cubit<AuthState> with SafeEmit<AuthState> {
   AuthCubit(this._repository) : super(const AuthState());
 
   final AuthRepository _repository;

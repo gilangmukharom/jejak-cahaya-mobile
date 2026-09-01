@@ -1,6 +1,7 @@
 import 'package:equatable/equatable.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 
+import '../../../../core/bloc/safe_emit.dart';
 import '../../../../core/error/failure_mapper.dart';
 import '../../../../core/error/failures.dart';
 import '../../../../core/models/achievement.dart';
@@ -50,7 +51,7 @@ class ProfileState extends Equatable {
   List<Object?> get props => [isLoading, stats, achievements, failure];
 }
 
-class ProfileCubit extends Cubit<ProfileState> {
+class ProfileCubit extends Cubit<ProfileState> with SafeEmit<ProfileState> {
   ProfileCubit({
     required AuthRepository authRepository,
     required GameRepository gameRepository,

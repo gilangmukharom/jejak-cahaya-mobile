@@ -7,6 +7,7 @@ import '../../features/auth/presentation/cubit/auth_cubit.dart';
 import '../../features/game/data/game_repository.dart';
 import '../network/api_client.dart';
 import '../network/dio_client.dart';
+import '../services/basemap_service.dart';
 import '../services/location_service.dart';
 import '../services/scan_result_holder.dart';
 import '../storage/app_preferences.dart';
@@ -46,7 +47,11 @@ Future<void> configureDependencies() async {
   // ── Layanan perangkat ─────────────────────────────────────────
   sl
     ..registerSingleton<LocationService>(LocationService())
-    ..registerSingleton<ScanResultHolder>(ScanResultHolder());
+    ..registerSingleton<ScanResultHolder>(ScanResultHolder())
+    // Singleton karena arsip petanya hanya perlu disalin dan dibuka sekali:
+    // membuatnya per layar berarti menyalin ulang 5 MB setiap kali pemain
+    // berpindah tab lalu kembali ke peta.
+    ..registerSingleton<BasemapService>(BasemapService());
 
   // ── Jaringan ──────────────────────────────────────────────────
   // Interceptor perlu memberi tahu AuthCubit saat sesi berakhir, sementara

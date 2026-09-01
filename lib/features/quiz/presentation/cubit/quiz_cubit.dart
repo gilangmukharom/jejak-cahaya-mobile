@@ -1,3 +1,4 @@
+import '../../../../core/bloc/safe_emit.dart';
 import 'dart:async';
 
 import 'package:equatable/equatable.dart';
@@ -83,7 +84,7 @@ class QuizState extends Equatable {
 /// Cubit ini tidak pernah tahu jawaban mana yang benar — backend baru
 /// mengungkapnya pada response hasil. Itulah yang membuat skor tidak bisa
 /// dipalsukan dari sisi aplikasi.
-class QuizCubit extends Cubit<QuizState> {
+class QuizCubit extends Cubit<QuizState> with SafeEmit<QuizState> {
   QuizCubit(this._repository) : super(const QuizState());
 
   final GameRepository _repository;

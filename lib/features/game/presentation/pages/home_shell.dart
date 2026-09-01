@@ -16,6 +16,16 @@ class HomeShell extends StatefulWidget {
 
   final StatefulNavigationShell navigationShell;
 
+  /// Ruang di tepi bawah yang tertutup bilah navigasi mengambang.
+  ///
+  /// Layar yang menggambar sampai ke belakang bilah — seperti peta penjelajahan
+  /// — memakai nilai ini untuk menahan antarmukanya sendiri agar tetap terlihat,
+  /// sementara latarnya tetap memenuhi layar.
+  static double reservedBottom(BuildContext context) =>
+      _BottomNavBar._barHeight +
+      _BottomNavBar._bottomMargin +
+      MediaQuery.viewPaddingOf(context).bottom;
+
   @override
   State<HomeShell> createState() => _HomeShellState();
 }
@@ -52,8 +62,8 @@ class _HomeShellState extends State<HomeShell> {
             key: _missionKey,
             title: 'Misi',
             description:
-                'Urutan perjalananmu. Titik harus didatangi berurutan — misi '
-                'berikutnya terbuka setelah misi sebelumnya tuntas.',
+                'Daftar tokoh yang bisa kamu temukan. Urutannya bebas — '
+                'datangi titik mana pun lebih dulu, sesukamu.',
           ),
           CoachStep(
             key: _collectionKey,
@@ -71,6 +81,10 @@ class _HomeShellState extends State<HomeShell> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
+      // Bilah navigasi mengambang di atas isi layar, bukan memotongnya. Tanpa
+      // ini peta pada tab penjelajahan akan berhenti beberapa puluh piksel di
+      // atas tepi bawah layar dan kesan "layar penuh" hilang seketika.
+      extendBody: true,
       body: widget.navigationShell,
       bottomNavigationBar: _BottomNavBar(
         navigationShell: widget.navigationShell,
@@ -106,6 +120,8 @@ class _BottomNavBar extends StatelessWidget {
   final GlobalKey missionKey;
 
   static const double _barHeight = 68;
+  static const double _bottomMargin = 10;
+  static const double _sideMargin = 12;
 
   /// Urutan branch pada router: 0 peta, 1 koleksi, 2 misi, 3 profil.
   static const List<_NavItem> _leftItems = [
@@ -147,13 +163,26 @@ class _BottomNavBar extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Container(
-      decoration: const BoxDecoration(
-        color: AppColors.surface,
-        border: Border(top: BorderSide(color: AppColors.surfaceMuted)),
+    return Padding(
+      padding: EdgeInsets.fromLTRB(
+        _sideMargin,
+        0,
+        _sideMargin,
+        _bottomMargin + MediaQuery.viewPaddingOf(context).bottom,
       ),
-      child: SafeArea(
-        top: false,
+      child: DecoratedBox(
+        decoration: BoxDecoration(
+          color: AppColors.surface,
+          borderRadius: BorderRadius.circular(24),
+          border: Border.all(color: AppColors.surfaceMuted),
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withValues(alpha: 0.16),
+              blurRadius: 18,
+              offset: const Offset(0, 5),
+            ),
+          ],
+        ),
         child: SizedBox(
           height: _barHeight,
           child: Row(

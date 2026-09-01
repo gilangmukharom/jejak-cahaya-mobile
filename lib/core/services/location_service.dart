@@ -15,6 +15,8 @@ class PlayerPosition {
     required this.accuracyM,
     required this.isMocked,
     required this.timestamp,
+    this.headingDeg,
+    this.speedMps = 0,
   });
 
   final double latitude;
@@ -27,16 +29,47 @@ class PlayerPosition {
 
   final DateTime timestamp;
 
+  /// Arah gerak pemain dalam derajat, 0° = utara. Null bila belum diketahui.
+  ///
+  /// Ini adalah *course over ground* dari GPS — arah pemain berpindah — bukan
+  /// bacaan kompas magnetik. Bedanya penting: nilainya hanya bermakna selama
+  /// pemain benar-benar berjalan, dan tidak berubah ketika pemain berdiri diam
+  /// lalu memutar badan. Peta memakainya untuk berputar mengikuti pemain, dan
+  /// menahan putaran itu saat [isMoving] bernilai false — lihat [headingWhenMoving].
+  final double? headingDeg;
+
+  /// Laju pemain dalam meter/detik menurut GPS.
+  final double speedMps;
+
   factory PlayerPosition.fromGeolocator(Position position) => PlayerPosition(
         latitude: position.latitude,
         longitude: position.longitude,
         accuracyM: position.accuracy,
         isMocked: position.isMocked,
         timestamp: position.timestamp,
+        // Geolocator melaporkan nilai negatif ketika arah tidak tersedia.
+        headingDeg: position.heading < 0 ? null : position.heading % 360,
+        speedMps: position.speed < 0 ? 0 : position.speed,
       );
 
   /// Apakah pembacaan ini cukup presisi untuk dipakai memindai.
   bool get isAccurateEnough => accuracyM <= AppConfig.maxGpsAccuracyM;
+
+  /// Apakah pemain sedang benar-benar berpindah tempat.
+  ///
+  /// Ambangnya berada di bawah kecepatan jalan santai (±1,3 m/s) tetapi di atas
+  /// derau GPS saat diam, yang kerap menghasilkan laju semu beberapa desimeter
+  /// per detik.
+  bool get isMoving => speedMps >= _movingThresholdMps;
+
+  /// Arah hadap yang layak dipakai memutar peta, atau null saat pemain diam.
+  ///
+  /// Tanpa penjagaan ini peta akan berputar-putar sendiri ketika pemain berhenti
+  /// membaca kisah tokoh — derau GPS membuat arah gerak melompat ke segala
+  /// penjuru justru ketika perpindahannya nol.
+  double? get headingWhenMoving => isMoving ? headingDeg : null;
+
+  static const double _movingThresholdMps = 0.6;
 
   Map<String, dynamic> toJson() => {
         'latitude': latitude,

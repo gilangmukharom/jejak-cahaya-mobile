@@ -37,6 +37,25 @@ dependencies:
   flutter_map: ^7.0.2
   latlong2: ^0.9.1
 
+  # Basemap vektor gaya permainan. Petanya digambar sendiri di perangkat dari
+  # data vektor Protomaps (turunan OpenStreetMap) alih-alih menarik gambar jadi
+  # dari server tile: hanya dengan begitu paletnya bisa ditentukan sepenuhnya —
+  # rumput hijau, air toska, label POI dimatikan — dan tidak ada satu pun
+  # permintaan jaringan ke server tile pihak ketiga.
+  vector_map_tiles: ^8.0.0
+  vector_map_tiles_pmtiles: ^1.5.0
+  # Dipakai langsung: tipe `Theme` gaya peta dan `ThemeReader` berasal dari sini,
+  # jadi ia disebut eksplisit alih-alih diandalkan sebagai dependensi transitif.
+  vector_tile_renderer: ^5.2.1
+  # Dipakai langsung oleh pengujian gaya peta, yang membuka arsip .pmtiles dan
+  # menggambar tile sungguhan untuk memastikan layernya benar-benar terpilih.
+  pmtiles: ^1.3.0
+
+  # Arsip .pmtiles dibundel sebagai aset, tetapi paket pmtiles membacanya lewat
+  # pembacaan acak pada berkas — jadi aset perlu disalin dulu ke direktori
+  # aplikasi. Di sinilah path_provider dipakai.
+  path_provider: ^2.1.5
+
   # ── Pemindai QR ───────────────────────────────────────────────
   mobile_scanner: ^5.2.3
 
@@ -64,6 +83,11 @@ flutter:
     - assets/images/
     - assets/icons/
     - assets/animations/
+    # Basemap vektor offline (Protomaps v4, turunan OpenStreetMap, ODbL).
+    # Disebut per berkas, bukan sebagai direktori: mendaftarkan `assets/map/`
+    # ikut membundel README.md di sebelahnya ke dalam APK.
+    # Lihat assets/map/README.md untuk cara membuat ulang berkas ini.
+    - assets/map/basemap.pmtiles
   # Tipografi memakai Plus Jakarta Sans lewat paket google_fonts, sehingga tidak
   # ada berkas font yang perlu dibundel. Bila nanti ingin memakai font Arab
   # (mis. Amiri) untuk kaligrafi, letakkan .ttf-nya di assets/fonts/ lalu

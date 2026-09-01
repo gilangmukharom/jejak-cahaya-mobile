@@ -14,6 +14,24 @@ Future<void> main() async {
     DeviceOrientation.portraitDown,
   ]);
 
+  // Peta penjelajahan digambar sampai ke tepi layar, termasuk di belakang bilah
+  // status dan bilah navigasi sistem. Tanpa mode ini keduanya tetap menjadi
+  // balok legam yang memotong peta, dan layar utama berhenti terasa seperti
+  // permainan.
+  await SystemChrome.setEnabledSystemUIMode(SystemUiMode.edgeToEdge);
+
+  // Ikonnya dibuat gelap: latar di belakangnya adalah peta terang, dan ikon
+  // terang bawaan akan lenyap di atasnya.
+  SystemChrome.setSystemUIOverlayStyle(
+    const SystemUiOverlayStyle(
+      statusBarColor: Colors.transparent,
+      statusBarIconBrightness: Brightness.dark,
+      statusBarBrightness: Brightness.light,
+      systemNavigationBarColor: Colors.transparent,
+      systemNavigationBarIconBrightness: Brightness.dark,
+    ),
+  );
+
   await configureDependencies();
 
   runApp(const JejakCahayaApp());

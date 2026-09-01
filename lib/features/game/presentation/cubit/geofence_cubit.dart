@@ -1,3 +1,4 @@
+import '../../../../core/bloc/safe_emit.dart';
 import 'dart:async';
 
 import 'package:equatable/equatable.dart';
@@ -79,7 +80,7 @@ class GeofenceState extends Equatable {
 /// Pengunciannya bersifat pengalaman pengguna. Yang benar-benar mengikat adalah
 /// pemeriksaan ulang di `POST /scan`; tanpa itu, keputusan di sisi client bisa
 /// dilewati begitu saja.
-class GeofenceCubit extends Cubit<GeofenceState> {
+class GeofenceCubit extends Cubit<GeofenceState> with SafeEmit<GeofenceState> {
   GeofenceCubit({
     required GameRepository repository,
     required LocationService locationService,

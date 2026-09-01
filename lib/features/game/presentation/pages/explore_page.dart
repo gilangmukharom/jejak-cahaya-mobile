@@ -1,11 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
-import 'package:flutter_map/flutter_map.dart';
 import 'package:go_router/go_router.dart';
-import 'package:latlong2/latlong.dart';
 
 import '../../../../app/router/app_routes.dart';
 import '../../../../app/theme/app_colors.dart';
+import '../../../../app/theme/game_map_style.dart';
 import '../../../../core/di/injection.dart';
 import '../../../../core/models/checkpoint.dart';
 import '../../../../core/services/location_service.dart';
@@ -16,9 +15,20 @@ import '../../data/game_repository.dart';
 import '../cubit/explore_cubit.dart';
 import '../widgets/checkpoint_detail_sheet.dart';
 import '../widgets/checkpoint_radar.dart';
+import '../widgets/game_map_view.dart';
+import 'home_shell.dart';
 
-/// Layar utama permainan: peta area masjid, radar checkpoint terdekat,
-/// dan ringkasan misi yang sedang berjalan.
+/// Layar utama permainan.
+///
+/// Petanya bukan salah satu isi halaman, melainkan **panggung tempat permainan
+/// berlangsung**: ia memenuhi layar dari tepi ke tepi, dan segala hal lain —
+/// misi yang berjalan, radar, daftar checkpoint — mengambang di atasnya.
+///
+/// Susunan itu dipilih supaya perhatian pemain berada di tempat yang benar.
+/// Permainan ini menuntut orang berjalan ke sebuah titik; yang paling harus
+/// terlihat adalah di mana ia berdiri sekarang dan ke mana ia harus melangkah,
+/// bukan daftar yang harus digulir. Daftar itu tetap ada, satu tarikan jari di
+/// bawah, untuk saat pemain memang ingin membacanya.
 class ExplorePage extends StatelessWidget {
   const ExplorePage({super.key});
 
@@ -41,13 +51,32 @@ class ExplorePage extends StatelessWidget {
   }
 }
 
-class _ExploreView extends StatelessWidget {
+class _ExploreView extends StatefulWidget {
   const _ExploreView({this.mosqueId});
 
   final String? mosqueId;
 
   @override
+  State<_ExploreView> createState() => _ExploreViewState();
+}
+
+class _ExploreViewState extends State<_ExploreView> {
+  /// Tombol pusatkan berada di luar peta, jadi memerintahkannya memerlukan
+  /// pegangan langsung ke State peta.
+  final GlobalKey<GameMapViewState> _mapKey = GlobalKey<GameMapViewState>();
+
+  /// Tombol pusatkan hanya muncul ketika peta memang tidak lagi mengikuti
+  /// pemain. Tombol yang selalu terlihat padahal tidak ada yang perlu
+  /// dipusatkan hanya menambah benda di layar.
+  bool _isFollowing = true;
+
+  void _openCheckpoint(Checkpoint checkpoint) =>
+      CheckpointDetailSheet.show(context, checkpoint);
+
+  @override
   Widget build(BuildContext context) {
+    final mosqueId = widget.mosqueId;
+
     if (mosqueId == null) {
       return Scaffold(
         body: EmptyView(
@@ -62,65 +91,78 @@ class _ExploreView extends StatelessWidget {
       );
     }
 
+    // Ruang yang ditempati bilah navigasi mengambang milik cangkang. Peta
+    // sengaja tergambar sampai ke belakangnya — hanya antarmuka yang perlu
+    // menghindarinya.
+    final reservedBottom = HomeShell.reservedBottom(context);
+
     return Scaffold(
+      // Warna rumput yang sama dengan tema peta, supaya tidak ada kilatan putih
+      // di sela-sela pemuatan.
+      backgroundColor: GameMapStyle.groundColor,
       body: BlocBuilder<ExploreCubit, ExploreState>(
         builder: (context, state) {
-          if (state.isLoading && state.checkpoints.isEmpty) {
-            return const LoadingView(message: 'Memuat checkpoint di sekitar…');
-          }
+          final target = state.nearestPending;
 
-          final failure = state.failure;
-          if (failure != null && state.checkpoints.isEmpty) {
-            return FailureView(
-              failure: failure,
-              onRetry: () => context.read<ExploreCubit>().load(mosqueId!),
-            );
-          }
+          return Stack(
+            children: [
+              Positioned.fill(
+                child: GameMapView(
+                  key: _mapKey,
+                  checkpoints: state.checkpoints,
+                  position: state.position,
+                  target: target,
+                  onCheckpointTap: _openCheckpoint,
+                  onFollowChanged: (following) {
+                    if (following == _isFollowing) return;
+                    setState(() => _isFollowing = following);
+                  },
+                ),
+              ),
 
-          return RefreshIndicator(
-            onRefresh: () => context.read<ExploreCubit>().load(mosqueId!),
-            child: CustomScrollView(
-              slivers: [
-                SliverToBoxAdapter(child: _MapPanel(state: state)),
-                SliverToBoxAdapter(child: _ProgressStrip(state: state)),
-                if (state.nearestPending != null)
-                  SliverPadding(
-                    padding: const EdgeInsets.fromLTRB(16, 8, 16, 4),
-                    sliver: SliverToBoxAdapter(
-                      child: CheckpointRadar(
-                        checkpoint: state.nearestPending!,
-                        onTap: () => context.push(AppRoutes.scanner),
-                      ),
-                    ),
-                  ),
-                SliverPadding(
-                  padding: const EdgeInsets.fromLTRB(16, 20, 16, 8),
-                  sliver: SliverToBoxAdapter(
-                    child: Text(
-                      'Checkpoint di Masjid',
-                      style: Theme.of(context)
-                          .textTheme
-                          .titleMedium
-                          ?.copyWith(fontWeight: FontWeight.w800),
-                    ),
-                  ),
+              // Gelap tipis di tepi atas dan bawah. Antarmuka putih yang
+              // mengambang di atas peta terang akan hilang tenggelam tanpa ini.
+              const Positioned.fill(child: _MapScrim()),
+
+              _TopHud(state: state),
+
+              _MapControls(
+                bottom: reservedBottom + _sheetPeekHeight + 76,
+                isFollowing: _isFollowing,
+                onRecenter: () => _mapKey.currentState?.recenter(),
+              ),
+
+              if (target != null)
+                _TargetChip(
+                  checkpoint: target,
+                  bottom: reservedBottom + _sheetPeekHeight + 12,
+                  onTap: () => (target.isInRange ?? false)
+                      ? context.push(AppRoutes.scanner)
+                      : _openCheckpoint(target),
                 ),
-                SliverPadding(
-                  padding: const EdgeInsets.fromLTRB(16, 0, 16, 28),
-                  sliver: SliverList.separated(
-                    itemCount: state.checkpoints.length,
-                    separatorBuilder: (_, __) => const SizedBox(height: 10),
-                    itemBuilder: (context, index) => _CheckpointTile(
-                      checkpoint: state.checkpoints[index],
-                      onTap: () => CheckpointDetailSheet.show(
-                        context,
-                        state.checkpoints[index],
-                      ),
-                    ),
-                  ),
+
+              Padding(
+                padding: EdgeInsets.only(bottom: reservedBottom),
+                child: _CheckpointSheet(
+                  state: state,
+                  onCheckpointTap: _openCheckpoint,
+                  onRefresh: () => context.read<ExploreCubit>().load(mosqueId),
                 ),
-              ],
-            ),
+              ),
+
+              // Keadaan luar biasa digambar paling akhir, di atas segalanya.
+              if (state.isLoading && state.checkpoints.isEmpty)
+                const _StatusPill(
+                  icon: Icons.satellite_alt_rounded,
+                  message: 'Mencari sinyal & memuat checkpoint…',
+                ),
+
+              if (state.failure != null && state.checkpoints.isEmpty)
+                _LoadFailureOverlay(
+                  message: state.failure!.message,
+                  onRetry: () => context.read<ExploreCubit>().load(mosqueId),
+                ),
+            ],
           );
         },
       ),
@@ -128,198 +170,518 @@ class _ExploreView extends StatelessWidget {
   }
 }
 
-/// Peta OpenStreetMap dengan lingkaran geofence dan penanda checkpoint.
-class _MapPanel extends StatelessWidget {
-  const _MapPanel({required this.state});
+/// Tinggi bagian lembar checkpoint yang mengintip saat tertutup.
+const double _sheetPeekHeight = 92;
+
+/// Lapisan gelap tipis di tepi atas dan bawah peta.
+class _MapScrim extends StatelessWidget {
+  const _MapScrim();
+
+  @override
+  Widget build(BuildContext context) {
+    return IgnorePointer(
+      child: DecoratedBox(
+        decoration: BoxDecoration(
+          gradient: LinearGradient(
+            begin: Alignment.topCenter,
+            end: Alignment.bottomCenter,
+            stops: const [0, 0.18, 0.72, 1],
+            colors: [
+              Colors.black.withValues(alpha: 0.22),
+              Colors.transparent,
+              Colors.transparent,
+              Colors.black.withValues(alpha: 0.14),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+/// Bilah misi yang mengambang di tepi atas.
+///
+/// Isinya dibatasi pada satu pertanyaan: misi apa yang sedang dijalani, dan
+/// berapa banyak yang sudah selesai. Uraian misinya sengaja tidak ikut — di
+/// layar ini pemain sedang berjalan, bukan membaca.
+class _TopHud extends StatelessWidget {
+  const _TopHud({required this.state});
 
   final ExploreState state;
 
   @override
   Widget build(BuildContext context) {
-    final position = state.position;
-    final center = position != null
-        ? LatLng(position.latitude, position.longitude)
-        : state.checkpoints.isNotEmpty
-            ? LatLng(
-                state.checkpoints.first.latitude,
-                state.checkpoints.first.longitude,
-              )
-            : const LatLng(-6.1094, 106.7395);
+    final theme = Theme.of(context);
+    final total = state.checkpoints.length;
+    final mission = state.activeMission;
 
-    // Seluruh titik yang harus muat di layar: checkpoint ditambah posisi pemain.
-    final points = <LatLng>[
-      for (final checkpoint in state.checkpoints)
-        LatLng(checkpoint.latitude, checkpoint.longitude),
-      if (position != null) LatLng(position.latitude, position.longitude),
-    ];
-
-    return SizedBox(
-      height: 320,
-      child: Stack(
-        children: [
-          FlutterMap(
-            options: MapOptions(
-              initialCenter: center,
-              initialZoom: 17,
-              minZoom: 3,
-              maxZoom: 19,
-              // Zoom tetap membuat checkpoint gampang berada di luar layar —
-              // pemain hanya melihat hamparan kosong dan mengira petanya rusak.
-              // Bingkai kamera disesuaikan agar semua titik pasti terlihat.
-              initialCameraFit: points.length > 1
-                  ? CameraFit.bounds(
-                      bounds: LatLngBounds.fromPoints(points),
-                      padding: const EdgeInsets.all(48),
-                      maxZoom: 18,
-                    )
-                  : null,
-              interactionOptions: const InteractionOptions(
-                flags: InteractiveFlag.pinchZoom | InteractiveFlag.drag,
+    return SafeArea(
+      child: Padding(
+        padding: const EdgeInsets.fromLTRB(14, 10, 14, 0),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            _FloatingSurface(
+              padding: const EdgeInsets.fromLTRB(14, 11, 14, 11),
+              child: Row(
+                children: [
+                  const Icon(Icons.flag_rounded,
+                      size: 19, color: AppColors.primary),
+                  const SizedBox(width: 9),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Text(
+                          mission?.title ?? 'Semua misi selesai',
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: theme.textTheme.titleSmall
+                              ?.copyWith(fontWeight: FontWeight.w800),
+                        ),
+                        const SizedBox(height: 5),
+                        ClipRRect(
+                          borderRadius: BorderRadius.circular(999),
+                          child: LinearProgressIndicator(
+                            value: total > 0
+                                ? state.discoveredCount / total
+                                : 0,
+                            minHeight: 5,
+                            backgroundColor: AppColors.surfaceMuted,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                  const SizedBox(width: 12),
+                  Text(
+                    '${state.discoveredCount}/$total',
+                    style: theme.textTheme.titleSmall?.copyWith(
+                      color: AppColors.primary,
+                      fontWeight: FontWeight.w900,
+                    ),
+                  ),
+                ],
               ),
             ),
-            children: [
-              TileLayer(
-                urlTemplate: 'https://tile.openstreetmap.org/{z}/{x}/{y}.png',
-                // OpenStreetMap mensyaratkan identifikasi aplikasi pada
-                // permintaan tile; ganti dengan applicationId Anda saat rilis.
-                userAgentPackageName: 'id.jejakcahaya.app',
-                maxZoom: 19,
-              ),
-              // Radius checkpoint TIDAK lagi digambar sebagai lingkaran
-              // berskala meter untuk semua titik. Radiusnya bisa mencapai
-              // ratusan meter sementara peta sedekat ini hanya mencakup puluhan
-              // meter — lingkarannya saling menimpa, menutupi seluruh jalan,
-              // dan peta tampak seperti bidang hijau polos.
-              //
-              // Yang digambar hanya radius satu checkpoint terdekat yang belum
-              // ditemukan, sebagai penunjuk seberapa dekat pemain harus berada.
-              if (state.nearestPending != null)
-                CircleLayer(
-                  circles: [
-                    CircleMarker(
-                      point: LatLng(
-                        state.nearestPending!.latitude,
-                        state.nearestPending!.longitude,
-                      ),
-                      radius: state.nearestPending!.radiusMeters.toDouble(),
-                      useRadiusInMeter: true,
-                      color: AppColors.gold.withValues(alpha: 0.12),
-                      borderColor: AppColors.gold.withValues(alpha: 0.7),
-                      borderStrokeWidth: 1.5,
-                    ),
-                  ],
-                ),
-              MarkerLayer(
-                markers: [
-                  for (final checkpoint in state.checkpoints)
-                    Marker(
-                      point: LatLng(checkpoint.latitude, checkpoint.longitude),
-                      width: 34,
-                      height: 34,
-                      child: _CheckpointPin(checkpoint: checkpoint),
-                    ),
-                  if (position != null)
-                    Marker(
-                      point: LatLng(position.latitude, position.longitude),
-                      width: 22,
-                      height: 22,
-                      child: const _PlayerPin(),
-                    ),
-                ],
-              ),
-              // Atribusi wajib menurut ketentuan penggunaan OpenStreetMap.
-              const RichAttributionWidget(
-                alignment: AttributionAlignment.bottomLeft,
-                attributions: [
-                  TextSourceAttribution('© OpenStreetMap contributors'),
-                ],
-              ),
+            if (state.failure != null && state.checkpoints.isNotEmpty) ...[
+              const SizedBox(height: 8),
+              _OfflineBanner(message: state.failure!.message),
             ],
-          ),
-          if (state.failure != null)
-            Positioned(
-              left: 12,
-              right: 12,
-              bottom: 12,
-              child: _OfflineBanner(message: state.failure!.message),
-            ),
-        ],
+          ],
+        ),
       ),
     );
   }
 }
 
-/// Penanda checkpoint di peta.
-///
-/// Menampilkan **nomor urut kunjungan**, bukan ikon QR: peta harus langsung
-/// memperlihatkan rutenya — titik 1 dulu, lalu 2, dan seterusnya. Nomor yang
-/// sama tercetak pada berkas QR, sehingga apa yang dilihat di peta cocok dengan
-/// stiker yang tertempel di dinding.
-///
-/// Titik yang sudah ditemukan berubah hijau dengan centang kecil, agar rute
-/// yang tersisa tetap terbaca sekilas.
-class _CheckpointPin extends StatelessWidget {
-  const _CheckpointPin({required this.checkpoint});
+/// Tombol-tombol yang menempel di tepi kanan peta.
+class _MapControls extends StatelessWidget {
+  const _MapControls({
+    required this.bottom,
+    required this.isFollowing,
+    required this.onRecenter,
+  });
 
-  final Checkpoint checkpoint;
+  final double bottom;
+  final bool isFollowing;
+  final VoidCallback onRecenter;
 
   @override
   Widget build(BuildContext context) {
-    final discovered = checkpoint.isDiscovered;
-
-    return Container(
-      alignment: Alignment.center,
-      decoration: BoxDecoration(
-        color: discovered ? AppColors.success : AppColors.primary,
-        shape: BoxShape.circle,
-        border: Border.all(color: Colors.white, width: 2.5),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withValues(alpha: 0.25),
-            blurRadius: 6,
-            offset: const Offset(0, 2),
-          ),
-        ],
-      ),
-      child: discovered
-          ? const Icon(Icons.check_rounded, size: 18, color: Colors.white)
-          : FittedBox(
-              fit: BoxFit.scaleDown,
-              child: Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 3),
-                child: Text(
-                  checkpoint.orderLabel,
-                  style: const TextStyle(
-                    color: AppColors.gold,
-                    fontWeight: FontWeight.w900,
-                    fontSize: 15,
-                    height: 1,
+    return Positioned(
+      right: 14,
+      bottom: bottom,
+      child: AnimatedSlide(
+        duration: const Duration(milliseconds: 220),
+        offset: isFollowing ? const Offset(1.4, 0) : Offset.zero,
+        child: AnimatedOpacity(
+          duration: const Duration(milliseconds: 220),
+          opacity: isFollowing ? 0 : 1,
+          child: Semantics(
+            button: true,
+            label: 'Pusatkan peta ke posisi saya',
+            child: Material(
+              color: AppColors.surface,
+              shape: const CircleBorder(),
+              elevation: 4,
+              shadowColor: Colors.black.withValues(alpha: 0.3),
+              child: InkWell(
+                onTap: onRecenter,
+                customBorder: const CircleBorder(),
+                child: const SizedBox(
+                  width: 48,
+                  height: 48,
+                  child: Icon(
+                    Icons.my_location_rounded,
+                    size: 23,
+                    color: AppColors.primary,
                   ),
                 ),
               ),
             ),
+          ),
+        ),
+      ),
     );
   }
 }
 
-class _PlayerPin extends StatelessWidget {
-  const _PlayerPin();
+/// Kartu ringkas titik tujuan berikutnya, tepat di atas lembar checkpoint.
+///
+/// Arah tidak lagi ditampilkan di sini sebagai panah — peta di belakangnya
+/// sudah memperlihatkannya jauh lebih jelas. Yang tersisa adalah dua hal yang
+/// tidak bisa dibaca dari peta: nama titiknya, dan berapa meter lagi.
+class _TargetChip extends StatelessWidget {
+  const _TargetChip({
+    required this.checkpoint,
+    required this.bottom,
+    this.onTap,
+  });
+
+  final Checkpoint checkpoint;
+  final double bottom;
+  final VoidCallback? onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final inRange = checkpoint.isInRange ?? false;
+
+    return Positioned(
+      left: 14,
+      bottom: bottom,
+      child: Material(
+        color: Colors.transparent,
+        child: InkWell(
+          onTap: onTap,
+          borderRadius: BorderRadius.circular(999),
+          child: AnimatedContainer(
+            duration: const Duration(milliseconds: 260),
+            constraints: const BoxConstraints(maxWidth: 232),
+            padding: const EdgeInsets.fromLTRB(8, 7, 16, 7),
+            decoration: BoxDecoration(
+              gradient: AppColors.primaryGradient,
+              borderRadius: BorderRadius.circular(999),
+              border: Border.all(
+                color: inRange
+                    ? AppColors.gold
+                    : Colors.white.withValues(alpha: 0.16),
+                width: inRange ? 1.8 : 1,
+              ),
+              boxShadow: [
+                BoxShadow(
+                  color: inRange
+                      ? AppColors.gold.withValues(alpha: 0.42)
+                      : Colors.black.withValues(alpha: 0.28),
+                  blurRadius: inRange ? 18 : 10,
+                  offset: const Offset(0, 3),
+                ),
+              ],
+            ),
+            child: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Container(
+                  width: 32,
+                  height: 32,
+                  alignment: Alignment.center,
+                  decoration: BoxDecoration(
+                    color: Colors.white.withValues(alpha: 0.14),
+                    shape: BoxShape.circle,
+                  ),
+                  child: Icon(
+                    inRange
+                        ? Icons.qr_code_scanner_rounded
+                        : Icons.directions_walk_rounded,
+                    size: 18,
+                    color: AppColors.gold,
+                  ),
+                ),
+                const SizedBox(width: 10),
+                Flexible(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Text(
+                        checkpoint.name,
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: theme.textTheme.labelLarge?.copyWith(
+                          color: AppColors.textOnDark,
+                          fontWeight: FontWeight.w700,
+                        ),
+                      ),
+                      Text(
+                        inRange
+                            ? 'Ketuk untuk memindai'
+                            : checkpoint.distanceLabel,
+                        maxLines: 1,
+                        style: theme.textTheme.labelSmall?.copyWith(
+                          color: AppColors.gold,
+                          fontWeight: FontWeight.w800,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+/// Lembar yang bisa ditarik: radar dan daftar seluruh checkpoint.
+class _CheckpointSheet extends StatelessWidget {
+  const _CheckpointSheet({
+    required this.state,
+    required this.onCheckpointTap,
+    required this.onRefresh,
+  });
+
+  final ExploreState state;
+  final void Function(Checkpoint checkpoint) onCheckpointTap;
+  final Future<void> Function() onRefresh;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final target = state.nearestPending;
+
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        // Ukuran lembar dinyatakan sebagai pecahan dari tinggi induknya,
+        // sementara tinggi bagian yang mengintip adalah angka piksel tetap —
+        // jadi pecahannya dihitung dari tinggi yang benar-benar tersedia,
+        // bukan ditebak.
+        final peek =
+            (_sheetPeekHeight / constraints.maxHeight).clamp(0.08, 0.5);
+
+        return DraggableScrollableSheet(
+          initialChildSize: peek,
+          minChildSize: peek,
+          maxChildSize: 0.86,
+          snap: true,
+          snapSizes: [peek, 0.55],
+          builder: (context, scrollController) {
+            return DecoratedBox(
+              decoration: BoxDecoration(
+                color: AppColors.cream,
+                borderRadius: const BorderRadius.vertical(
+                  top: Radius.circular(28),
+                ),
+                boxShadow: [
+                  BoxShadow(
+                    color: Colors.black.withValues(alpha: 0.18),
+                    blurRadius: 20,
+                    offset: const Offset(0, -4),
+                  ),
+                ],
+              ),
+              child: RefreshIndicator(
+                onRefresh: onRefresh,
+                child: CustomScrollView(
+                  controller: scrollController,
+                  slivers: [
+                    // Pegangan dan judul. Keduanya ikut tergulir agar seluruh
+                    // isi lembar bisa dijangkau pada tinggi layar terkecil.
+                    SliverToBoxAdapter(
+                      child: Column(
+                        children: [
+                          const SizedBox(height: 10),
+                          Container(
+                            width: 42,
+                            height: 4,
+                            decoration: BoxDecoration(
+                              color: AppColors.textMuted
+                                  .withValues(alpha: 0.35),
+                              borderRadius: BorderRadius.circular(999),
+                            ),
+                          ),
+                          const SizedBox(height: 12),
+                          Padding(
+                            padding: const EdgeInsets.symmetric(horizontal: 18),
+                            child: Row(
+                              children: [
+                                Expanded(
+                                  child: Text(
+                                    state.isAllDiscovered
+                                        ? 'Seluruh checkpoint ditemukan'
+                                        : 'Checkpoint di Masjid',
+                                    style: theme.textTheme.titleMedium
+                                        ?.copyWith(fontWeight: FontWeight.w800),
+                                  ),
+                                ),
+                                const Icon(
+                                  Icons.keyboard_arrow_up_rounded,
+                                  size: 20,
+                                  color: AppColors.textMuted,
+                                ),
+                              ],
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                    if (target != null)
+                      SliverPadding(
+                        padding: const EdgeInsets.fromLTRB(16, 14, 16, 4),
+                        sliver: SliverToBoxAdapter(
+                          child: CheckpointRadar(
+                            checkpoint: target,
+                            onTap: () => context.push(AppRoutes.scanner),
+                          ),
+                        ),
+                      ),
+                    SliverPadding(
+                      padding: const EdgeInsets.fromLTRB(16, 14, 16, 28),
+                      sliver: SliverList.separated(
+                        itemCount: state.checkpoints.length,
+                        separatorBuilder: (_, __) => const SizedBox(height: 10),
+                        itemBuilder: (context, index) => _CheckpointTile(
+                          checkpoint: state.checkpoints[index],
+                          onTap: () =>
+                              onCheckpointTap(state.checkpoints[index]),
+                        ),
+                      ),
+                    ),
+                    // Atribusi lisensi data peta. Tempatnya di sini, bukan di
+                    // atas peta: di sana ia akan tertutup lembar ini.
+                    const SliverToBoxAdapter(
+                      child: Padding(
+                        padding: EdgeInsets.fromLTRB(16, 0, 16, 20),
+                        child: Center(child: MapAttribution()),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            );
+          },
+        );
+      },
+    );
+  }
+}
+
+/// Pemberitahuan singkat yang mengambang di tengah layar.
+class _StatusPill extends StatelessWidget {
+  const _StatusPill({required this.icon, required this.message});
+
+  final IconData icon;
+  final String message;
+
+  @override
+  Widget build(BuildContext context) {
+    return Center(
+      child: _FloatingSurface(
+        padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 14),
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Icon(icon, size: 18, color: AppColors.primary),
+            const SizedBox(width: 10),
+            Flexible(
+              child: Text(
+                message,
+                style: const TextStyle(
+                  fontSize: 13,
+                  fontWeight: FontWeight.w600,
+                  color: AppColors.textPrimary,
+                ),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+/// Ditampilkan ketika checkpoint sama sekali gagal dimuat.
+///
+/// Tanpa daftar checkpoint tidak ada permainan yang bisa dijalankan, jadi
+/// keadaan ini memang menutup layar — berbeda dari kegagalan penyegaran yang
+/// hanya memunculkan bilah di tepi atas.
+class _LoadFailureOverlay extends StatelessWidget {
+  const _LoadFailureOverlay({required this.message, required this.onRetry});
+
+  final String message;
+  final VoidCallback onRetry;
+
+  @override
+  Widget build(BuildContext context) {
+    return ColoredBox(
+      color: AppColors.cream.withValues(alpha: 0.94),
+      child: Center(
+        child: Padding(
+          padding: const EdgeInsets.all(28),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              const Icon(
+                Icons.explore_off_outlined,
+                size: 52,
+                color: AppColors.textMuted,
+              ),
+              const SizedBox(height: 16),
+              Text(
+                'Checkpoint gagal dimuat',
+                textAlign: TextAlign.center,
+                style: Theme.of(context)
+                    .textTheme
+                    .titleMedium
+                    ?.copyWith(fontWeight: FontWeight.w800),
+              ),
+              const SizedBox(height: 8),
+              Text(
+                message,
+                textAlign: TextAlign.center,
+                style: const TextStyle(color: AppColors.textSecondary),
+              ),
+              const SizedBox(height: 22),
+              FilledButton.icon(
+                onPressed: onRetry,
+                icon: const Icon(Icons.refresh_rounded),
+                label: const Text('Coba lagi'),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+/// Bilah putih membulat dengan bayangan — bentuk dasar seluruh antarmuka yang
+/// mengambang di atas peta.
+class _FloatingSurface extends StatelessWidget {
+  const _FloatingSurface({required this.child, required this.padding});
+
+  final Widget child;
+  final EdgeInsetsGeometry padding;
 
   @override
   Widget build(BuildContext context) {
     return Container(
+      padding: padding,
       decoration: BoxDecoration(
-        color: AppColors.info,
-        shape: BoxShape.circle,
-        border: Border.all(color: Colors.white, width: 3),
+        color: AppColors.surface,
+        borderRadius: BorderRadius.circular(18),
         boxShadow: [
           BoxShadow(
-            color: AppColors.info.withValues(alpha: 0.5),
-            blurRadius: 10,
-            spreadRadius: 2,
+            color: Colors.black.withValues(alpha: 0.16),
+            blurRadius: 14,
+            offset: const Offset(0, 4),
           ),
         ],
       ),
+      child: child,
     );
   }
 }
@@ -335,7 +697,7 @@ class _OfflineBanner extends StatelessWidget {
       padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
       decoration: BoxDecoration(
         color: AppColors.textPrimary.withValues(alpha: 0.9),
-        borderRadius: BorderRadius.circular(12),
+        borderRadius: BorderRadius.circular(14),
       ),
       child: Row(
         children: [
@@ -348,78 +710,6 @@ class _OfflineBanner extends StatelessWidget {
               overflow: TextOverflow.ellipsis,
               style: const TextStyle(color: Colors.white, fontSize: 12),
             ),
-          ),
-        ],
-      ),
-    );
-  }
-}
-
-/// Bilah ringkas: berapa checkpoint ditemukan dan misi apa yang sedang berjalan.
-class _ProgressStrip extends StatelessWidget {
-  const _ProgressStrip({required this.state});
-
-  final ExploreState state;
-
-  @override
-  Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-    final mission = state.activeMission;
-    final total = state.checkpoints.length;
-
-    return Container(
-      margin: const EdgeInsets.fromLTRB(16, 16, 16, 4),
-      padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        color: AppColors.surface,
-        borderRadius: BorderRadius.circular(20),
-        border: Border.all(color: AppColors.surfaceMuted),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
-            children: [
-              const Icon(Icons.flag_rounded,
-                  size: 20, color: AppColors.primary),
-              const SizedBox(width: 8),
-              Expanded(
-                child: Text(
-                  mission?.title ?? 'Semua misi selesai',
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                  style: theme.textTheme.titleSmall
-                      ?.copyWith(fontWeight: FontWeight.w800),
-                ),
-              ),
-              Text(
-                '${state.discoveredCount}/$total',
-                style: theme.textTheme.titleSmall?.copyWith(
-                  color: AppColors.primary,
-                  fontWeight: FontWeight.w800,
-                ),
-              ),
-            ],
-          ),
-          const SizedBox(height: 12),
-          ClipRRect(
-            borderRadius: BorderRadius.circular(999),
-            child: LinearProgressIndicator(
-              value: total > 0 ? state.discoveredCount / total : 0,
-              minHeight: 8,
-              backgroundColor: AppColors.surfaceMuted,
-            ),
-          ),
-          const SizedBox(height: 10),
-          Text(
-            state.isAllDiscovered
-                ? 'Barakallahu fiik — seluruh checkpoint telah Anda temukan!'
-                : mission?.description ??
-                    'Dekati checkpoint lalu pindai QR untuk menemukan tokoh.',
-            maxLines: 2,
-            overflow: TextOverflow.ellipsis,
-            style: theme.textTheme.bodySmall
-                ?.copyWith(color: AppColors.textSecondary),
           ),
         ],
       ),
@@ -458,7 +748,9 @@ class _CheckpointTile extends StatelessWidget {
           ),
           child: Row(
             children: [
-              // Nomor urut kunjungan, sama dengan penanda di peta dan berkas QR.
+              // Sama dengan penanda di peta: tanda tanya selama tokohnya belum
+              // terungkap, centang setelah ditemukan. Urutan kunjungan bebas,
+              // jadi tidak ada nomor yang perlu diikuti pemain.
               Container(
                 width: 46,
                 height: 46,
@@ -477,7 +769,7 @@ class _CheckpointTile extends StatelessWidget {
                         color: AppColors.success,
                       )
                     : Text(
-                        checkpoint.orderLabel,
+                        '?',
                         style: theme.textTheme.titleMedium?.copyWith(
                           fontWeight: FontWeight.w900,
                           color: inRange

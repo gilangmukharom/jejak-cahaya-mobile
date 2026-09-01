@@ -1,6 +1,7 @@
 import 'package:equatable/equatable.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 
+import '../../../../core/bloc/safe_emit.dart';
 import '../../../../core/error/failure_mapper.dart';
 import '../../../../core/error/failures.dart';
 import '../../../../core/models/scan_result.dart';
@@ -62,7 +63,7 @@ class ScannerState extends Equatable {
 /// Alur satu kali pindai: baca QR → ambil posisi terkini → kirim ke server →
 /// tampilkan penemuan atau alasan penolakan. Seluruh penilaian dilakukan
 /// server; cubit ini tidak pernah memutuskan sendiri apakah sebuah scan sah.
-class ScannerCubit extends Cubit<ScannerState> {
+class ScannerCubit extends Cubit<ScannerState> with SafeEmit<ScannerState> {
   ScannerCubit({
     required GameRepository repository,
     required LocationService locationService,

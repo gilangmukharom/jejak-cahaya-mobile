@@ -1,6 +1,7 @@
 import 'package:equatable/equatable.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 
+import '../../../../core/bloc/safe_emit.dart';
 import '../../../../core/error/failure_mapper.dart';
 import '../../../../core/error/failures.dart';
 import '../../../../core/models/leaderboard_entry.dart';
@@ -50,7 +51,7 @@ class LeaderboardState extends Equatable {
   List<Object?> get props => [isLoading, entries, period, myRank, failure];
 }
 
-class LeaderboardCubit extends Cubit<LeaderboardState> {
+class LeaderboardCubit extends Cubit<LeaderboardState> with SafeEmit<LeaderboardState> {
   LeaderboardCubit(this._repository) : super(const LeaderboardState());
 
   final GameRepository _repository;

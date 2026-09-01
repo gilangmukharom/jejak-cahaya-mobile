@@ -1,3 +1,4 @@
+import '../../../../core/bloc/safe_emit.dart';
 import 'dart:async';
 
 import 'package:equatable/equatable.dart';
@@ -50,7 +51,7 @@ class MissionState extends Equatable {
   List<Object?> get props => [isLoading, missions, detail, failure];
 }
 
-class MissionCubit extends Cubit<MissionState> {
+class MissionCubit extends Cubit<MissionState> with SafeEmit<MissionState> {
   MissionCubit(this._repository, ScanResultHolder scanResults)
       : super(const MissionState()) {
     // Sebuah penemuan bisa menuntaskan misi dan membuka misi berikutnya.
