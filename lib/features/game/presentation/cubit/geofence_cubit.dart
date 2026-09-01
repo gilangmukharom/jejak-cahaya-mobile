@@ -100,7 +100,23 @@ class GeofenceCubit extends Cubit<GeofenceState> with SafeEmit<GeofenceState> {
   ///
   /// GPS memancarkan pembaruan setiap beberapa meter; tanpa jeda ini, berjalan
   /// menyusuri halaman masjid akan menghasilkan puluhan permintaan per menit.
-  static const Duration _minCheckInterval = Duration(seconds: 8);
+  /// Jeda antar pemeriksaan geofence ke server, dibedakan menurut keadaan.
+  ///
+  /// Kedua keadaan melayani kebutuhan yang berbeda. Saat pemain masih di luar
+  /// area, pemeriksaan yang rapat itulah yang membuat gerbang terbuka sendiri
+  /// beberapa detik setelah ia melangkah masuk — inti dari pengalamannya.
+  /// Setelah berada di dalam, tidak ada lagi yang ditunggu: pemeriksaan hanya
+  /// perlu cukup sering untuk menyadari kalau pemain berjalan keluar.
+  ///
+  /// Sebelumnya keduanya 8 detik, yang berarti 7,5 permintaan per menit
+  /// sepanjang permainan — beban terbesar aplikasi ini, dan seluruhnya
+  /// terbuang untuk menanyakan sesuatu yang jawabannya tidak berubah.
+  static const Duration _checkIntervalOutside = Duration(seconds: 8);
+  static const Duration _checkIntervalInside = Duration(seconds: 30);
+
+  Duration get _minCheckInterval => state.stage == GeofenceStage.inside
+      ? _checkIntervalInside
+      : _checkIntervalOutside;
   DateTime? _lastCheckedAt;
 
   /// Menentukan masjid yang dimainkan lalu mulai memantau lokasi.

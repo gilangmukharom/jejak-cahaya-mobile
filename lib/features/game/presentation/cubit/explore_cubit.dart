@@ -102,7 +102,17 @@ class ExploreCubit extends Cubit<ExploreState> with SafeEmit<ExploreState> {
   /// Jarak dihitung ulang secara lokal pada setiap pembaruan GPS agar radar
   /// terasa hidup; server hanya dihubungi sesekali untuk menyelaraskan status
   /// penemuan dan menghindari pergeseran perhitungan.
-  static const Duration _syncInterval = Duration(seconds: 20);
+  /// Setiap penyelarasan mengirim DUA permintaan sekaligus (checkpoint dan misi
+  /// aktif), jadi jeda 20 detik berarti 6 permintaan per menit dari layar yang
+  /// pemainnya sedang diam saja. Digabung dengan pemeriksaan geofence, satu
+  /// pemain menghabiskan dua pertiga kuota rate limit hanya dengan membiarkan
+  /// aplikasi terbuka.
+  ///
+  /// Jarak dan arah dihitung ulang secara lokal pada setiap pembaruan GPS, jadi
+  /// radar tetap terasa hidup meski server jarang dihubungi — yang ditunda
+  /// hanyalah penyelarasan status penemuan, dan itu berubah hanya ketika pemain
+  /// memindai sesuatu (yang sudah memicu penyegaran tersendiri).
+  static const Duration _syncInterval = Duration(seconds: 45);
   DateTime? _lastSyncAt;
 
   Future<void> load(String mosqueId) async {
