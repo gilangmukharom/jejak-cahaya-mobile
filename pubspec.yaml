@@ -96,6 +96,36 @@ dev_dependencies:
   bloc_test: ^9.1.7
   mocktail: ^1.0.4
 
+  # Membangkitkan ikon peluncur Android & iOS dari berkas di launcher_icon/.
+  # Hanya dipakai saat build — tidak ikut ke dalam aplikasi.
+  flutter_launcher_icons: ^0.14.4
+
+# ── Ikon peluncur ───────────────────────────────────────────────
+#
+# Sumbernya ada di launcher_icon/, di luar assets/ dengan sengaja: direktori
+# `assets/icons/` terdaftar di bawah, jadi apa pun di sana ikut dibundel ke APK
+# — padahal ikon peluncur tidak pernah dibaca saat aplikasi berjalan.
+#
+# Jalankan ulang setelah mengubah berkas sumbernya:
+#   dart run flutter_launcher_icons
+#
+# Lihat launcher_icon/README.md untuk alasan di balik ukuran tiap lapisan.
+flutter_launcher_icons:
+  image_path: launcher_icon/app_icon.png
+
+  android: ic_launcher
+  # Dua lapisan terpisah, bukan satu gambar: inilah yang membuat ikon mengikuti
+  # bentuk pangkas tiap peluncur alih-alih tampil sebagai kotak putih di dalamnya.
+  adaptive_icon_background: launcher_icon/app_icon_background.png
+  adaptive_icon_foreground: launcher_icon/app_icon_foreground.png
+  # Lapisan tunggal untuk Android < 26, yang belum mengenal adaptive icon.
+  min_sdk_android: 21
+
+  ios: true
+  # App Store menolak ikon bertransparansi. Sumber iOS memang sudah tanpa alpha,
+  # tetapi baris ini menjaganya tetap begitu bila suatu saat gambarnya diganti.
+  remove_alpha_ios: true
+
 flutter:
   uses-material-design: true
   assets:

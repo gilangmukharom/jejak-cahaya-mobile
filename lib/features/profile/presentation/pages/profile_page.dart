@@ -7,6 +7,7 @@ import '../../../../app/theme/app_colors.dart';
 import '../../../../core/di/injection.dart';
 import '../../../../core/models/user.dart';
 import '../../../../core/widgets/app_widgets.dart';
+import '../../../../core/widgets/supported_by_pik2.dart';
 import '../../../auth/data/auth_repository.dart';
 import '../../../auth/presentation/cubit/auth_cubit.dart';
 import '../../../game/data/game_repository.dart';
@@ -95,6 +96,13 @@ class _ProfileView extends StatelessWidget {
                       : 'Lihat tokoh yang sudah ditemukan',
                   onTap: () => context.go(AppRoutes.collection),
                 ),
+
+                // Kredit sponsor. Splash hanya tampil sekejap saat sesi
+                // diperiksa — sering kurang dari sedetik bagi pengguna yang
+                // sudah login — jadi kreditnya juga ditaruh di sini, di tempat
+                // yang bisa dibuka kapan saja.
+                const SizedBox(height: 34),
+                const Center(child: SupportedByPik2(logoWidth: 104)),
               ],
             ),
           );

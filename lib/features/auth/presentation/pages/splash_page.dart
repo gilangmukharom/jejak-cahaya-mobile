@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 
 import '../../../../app/theme/app_colors.dart';
 import '../../../../core/config/app_config.dart';
+import '../../../../core/widgets/supported_by_pik2.dart';
 
 /// Ditampilkan selama sesi tersimpan diperiksa ke server.
 ///
@@ -11,8 +12,13 @@ import '../../../../core/config/app_config.dart';
 /// sehingga tidak ada kedipan layar masuk bagi pengguna yang masih login.
 ///
 /// Animasinya dibangun dengan framework Flutter sendiri, bukan Lottie: tidak
-/// ada berkas animasi yang dibundel, dan splash tidak boleh bergantung pada
-/// aset yang harus dimuat lebih dulu.
+/// ada berkas animasi yang dibundel, dan tidak ada satu pun bagian splash yang
+/// menunggu aset selesai dimuat.
+///
+/// Satu-satunya aset di layar ini adalah logo sponsor di bagian bawah. Ia
+/// sengaja diletakkan di lapisan terpisah dan muncul paling akhir: bila
+/// gambarnya terlambat satu-dua bingkai, animasi utama tetap berjalan penuh
+/// dan tidak ada yang tertahan menunggunya.
 class SplashPage extends StatefulWidget {
   const SplashPage({super.key});
 
@@ -91,91 +97,105 @@ class _SplashPageState extends State<SplashPage> with TickerProviderStateMixin {
       body: DecoratedBox(
         decoration: const BoxDecoration(gradient: AppColors.primaryGradient),
         child: SafeArea(
-          child: Center(
-            child: Column(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                SizedBox(
-                  width: 200,
-                  height: 200,
-                  child: AnimatedBuilder(
-                    animation: Listenable.merge([_intro, _pulse]),
-                    builder: (context, child) {
-                      return CustomPaint(
-                        painter: _RingPainter(
-                          progress: _pulse.value,
-                          opacity: _logoFade.value,
-                        ),
-                        child: Center(
-                          child: Opacity(
-                            opacity: _logoFade.value.clamp(0, 1),
-                            child: Transform.scale(
-                              scale: _logoScale.value.clamp(0, 1.4),
-                              child: child,
+          child: Stack(
+            children: [
+              Center(
+                child: Column(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    SizedBox(
+                      width: 200,
+                      height: 200,
+                      child: AnimatedBuilder(
+                        animation: Listenable.merge([_intro, _pulse]),
+                        builder: (context, child) {
+                          return CustomPaint(
+                            painter: _RingPainter(
+                              progress: _pulse.value,
+                              opacity: _logoFade.value,
                             ),
+                            child: Center(
+                              child: Opacity(
+                                opacity: _logoFade.value.clamp(0, 1),
+                                child: Transform.scale(
+                                  scale: _logoScale.value.clamp(0, 1.4),
+                                  child: child,
+                                ),
+                              ),
+                            ),
+                          );
+                        },
+                        child: Container(
+                          width: 104,
+                          height: 104,
+                          decoration: BoxDecoration(
+                            shape: BoxShape.circle,
+                            color: Colors.black.withValues(alpha: 0.22),
+                            border: Border.all(color: AppColors.gold, width: 2),
+                          ),
+                          child: const Icon(
+                            Icons.mosque_rounded,
+                            size: 52,
+                            color: AppColors.gold,
                           ),
                         ),
-                      );
-                    },
-                    child: Container(
-                      width: 104,
-                      height: 104,
-                      decoration: BoxDecoration(
-                        shape: BoxShape.circle,
-                        color: Colors.black.withValues(alpha: 0.22),
-                        border: Border.all(color: AppColors.gold, width: 2),
-                      ),
-                      child: const Icon(
-                        Icons.mosque_rounded,
-                        size: 52,
-                        color: AppColors.gold,
                       ),
                     ),
-                  ),
-                ),
-                const SizedBox(height: 28),
-                AnimatedBuilder(
-                  animation: _intro,
-                  builder: (context, child) => Opacity(
-                    opacity: _titleFade.value.clamp(0, 1),
-                    child: Transform.translate(
-                      offset: Offset(0, _titleSlide.value),
-                      child: child,
+                    const SizedBox(height: 28),
+                    AnimatedBuilder(
+                      animation: _intro,
+                      builder: (context, child) => Opacity(
+                        opacity: _titleFade.value.clamp(0, 1),
+                        child: Transform.translate(
+                          offset: Offset(0, _titleSlide.value),
+                          child: child,
+                        ),
+                      ),
+                      child: Column(
+                        children: [
+                          Text(
+                            AppConfig.appName.toUpperCase(),
+                            style: theme.textTheme.headlineSmall?.copyWith(
+                              color: AppColors.gold,
+                              fontWeight: FontWeight.w800,
+                              letterSpacing: 4,
+                            ),
+                          ),
+                          const SizedBox(height: 8),
+                          Text(
+                            'ISLAMIC EXPLORER',
+                            style: theme.textTheme.labelLarge?.copyWith(
+                              color:
+                                  AppColors.textOnDark.withValues(alpha: 0.7),
+                              letterSpacing: 3,
+                            ),
+                          ),
+                        ],
+                      ),
                     ),
-                  ),
-                  child: Column(
-                    children: [
-                      Text(
-                        AppConfig.appName.toUpperCase(),
-                        style: theme.textTheme.headlineSmall?.copyWith(
-                          color: AppColors.gold,
-                          fontWeight: FontWeight.w800,
-                          letterSpacing: 4,
+                    const SizedBox(height: 44),
+                    FadeTransition(
+                      opacity: _taglineFade,
+                      child: Text(
+                        AppConfig.appTagline,
+                        style: theme.textTheme.bodySmall?.copyWith(
+                          color: AppColors.textOnDark.withValues(alpha: 0.6),
                         ),
                       ),
-                      const SizedBox(height: 8),
-                      Text(
-                        'ISLAMIC EXPLORER',
-                        style: theme.textTheme.labelLarge?.copyWith(
-                          color: AppColors.textOnDark.withValues(alpha: 0.7),
-                          letterSpacing: 3,
-                        ),
-                      ),
-                    ],
-                  ),
+                    ),
+                  ],
                 ),
-                const SizedBox(height: 44),
-                FadeTransition(
+              ),
+              Positioned(
+                left: 0,
+                right: 0,
+                bottom: 26,
+                child: FadeTransition(
                   opacity: _taglineFade,
-                  child: Text(
-                    AppConfig.appTagline,
-                    style: theme.textTheme.bodySmall?.copyWith(
-                      color: AppColors.textOnDark.withValues(alpha: 0.6),
-                    ),
-                  ),
+                  child: const Center(child: SupportedByPik2(onDark: true)),
                 ),
-              ],
-            ),
+              ),
+            ],
           ),
         ),
       ),
