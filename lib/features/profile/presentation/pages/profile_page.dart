@@ -8,6 +8,7 @@ import '../../../../core/di/injection.dart';
 import '../../../../core/models/user.dart';
 import '../../../../core/widgets/app_widgets.dart';
 import '../../../../core/widgets/supported_by_pik2.dart';
+import '../../../game/presentation/pages/home_shell.dart';
 import '../../../auth/data/auth_repository.dart';
 import '../../../auth/presentation/cubit/auth_cubit.dart';
 import '../../../game/data/game_repository.dart';
@@ -65,7 +66,17 @@ class _ProfileView extends StatelessWidget {
           return RefreshIndicator(
             onRefresh: () => context.read<ProfileCubit>().load(),
             child: ListView(
-              padding: const EdgeInsets.fromLTRB(16, 8, 16, 28),
+              // Cangkang memakai `extendBody: true`, jadi badan halaman
+              // membentang di belakang bilah navigasi. Padding tetap 28 membuat
+              // isi terakhir — di sini kredit sponsor — tertutup bilah itu.
+              // `reservedBottom` menghitung tinggi bilah, marginnya, dan area
+              // aman perangkat sekaligus.
+              padding: EdgeInsets.fromLTRB(
+                16,
+                8,
+                16,
+                HomeShell.reservedBottom(context) + 16,
+              ),
               children: [
                 if (user != null) _ProfileHeader(user: user, stats: stats),
                 const SizedBox(height: 20),

@@ -10,6 +10,7 @@ import '../../../../core/services/location_service.dart';
 import '../../../../core/storage/app_preferences.dart';
 import '../../data/game_repository.dart';
 import '../cubit/geofence_cubit.dart';
+import '../../../../core/widgets/supported_by_pik2.dart';
 
 /// Gerbang masuk permainan — penegakan Layer 1 di sisi antarmuka.
 ///
@@ -67,6 +68,13 @@ class _GeofenceGateView extends StatelessWidget {
   }
 }
 
+/// Layar tunggu saat sinyal GPS dicari.
+///
+/// Kredit sponsor diletakkan di sini, bukan pada [LoadingView] umum: widget itu
+/// dipakai di dalam halaman-halaman yang sudah punya bilah dan isinya sendiri,
+/// sehingga logonya akan muncul berulang di tempat yang tidak masuk akal —
+/// termasuk di halaman profil, yang sudah memuat kredit yang sama di footer.
+/// Layar ini justru sebaliknya: satu layar penuh yang isinya hanya menunggu.
 class _LocatingView extends StatelessWidget {
   const _LocatingView({this.message = 'Mencari sinyal GPS…'});
 
@@ -74,35 +82,45 @@ class _LocatingView extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Center(
-      child: Column(
-        mainAxisAlignment: MainAxisAlignment.center,
-        children: [
-          const SizedBox(
-            width: 36,
-            height: 36,
-            child: CircularProgressIndicator(
-              strokeWidth: 3,
-              valueColor: AlwaysStoppedAnimation<Color>(AppColors.gold),
-            ),
-          ),
-          const SizedBox(height: 24),
-          Text(
-            message,
-            style: Theme.of(context)
-                .textTheme
-                .titleMedium
-                ?.copyWith(color: AppColors.textOnDark),
-          ),
-          const SizedBox(height: 8),
-          Text(
-            'Pastikan Anda berada di area terbuka',
-            style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                  color: AppColors.textOnDark.withValues(alpha: 0.6),
+    return Stack(
+      children: [
+        Center(
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              const SizedBox(
+                width: 36,
+                height: 36,
+                child: CircularProgressIndicator(
+                  strokeWidth: 3,
+                  valueColor: AlwaysStoppedAnimation<Color>(AppColors.gold),
                 ),
+              ),
+              const SizedBox(height: 24),
+              Text(
+                message,
+                style: Theme.of(context)
+                    .textTheme
+                    .titleMedium
+                    ?.copyWith(color: AppColors.textOnDark),
+              ),
+              const SizedBox(height: 8),
+              Text(
+                'Pastikan Anda berada di area terbuka',
+                style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                      color: AppColors.textOnDark.withValues(alpha: 0.6),
+                    ),
+              ),
+            ],
           ),
-        ],
-      ),
+        ),
+        const Positioned(
+          left: 0,
+          right: 0,
+          bottom: 26,
+          child: Center(child: SupportedByPik2(onDark: true, logoWidth: 104)),
+        ),
+      ],
     );
   }
 }
