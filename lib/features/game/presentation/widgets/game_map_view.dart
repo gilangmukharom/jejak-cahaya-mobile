@@ -168,7 +168,7 @@ class GameMapViewState extends State<GameMapView>
                     widget.checkpoints.first.latitude,
                     widget.checkpoints.first.longitude,
                   )
-                : const LatLng(-6.1094, 106.7395));
+                : const LatLng(-6.087036, 106.735228));
 
     return FutureBuilder<Basemap>(
       future: _basemap,
@@ -215,6 +215,9 @@ class GameMapViewState extends State<GameMapView>
       ),
       children: [
         if (basemap != null && basemap.isReady) _buildBasemapLayer(basemap),
+        // Disisipkan tepat di atas basemap dan di bawah segala penanda:
+        // yang diwarnai waktu adalah pemandangannya, bukan antarmukanya.
+        const _TimeOfDayTint(),
         if (widget.target != null) _buildTargetRadius(widget.target!),
         _buildCheckpointMarkers(),
         if (position != null) ..._buildPlayerMarkers(position),
@@ -323,6 +326,57 @@ class GameMapViewState extends State<GameMapView>
         ],
       ),
     ];
+  }
+}
+
+/// Mewarnai peta mengikuti waktu setempat.
+///
+/// Permainan ini dimainkan di luar ruangan, dan langit di atas pemain berubah
+/// sepanjang hari. Peta yang warnanya sama pada pukul enam pagi dan pukul
+/// delapan malam terasa seperti gambar, bukan seperti tempat.
+///
+/// Warnanya sengaja tipis. Layar ini dibaca sambil berjalan di bawah matahari
+/// langsung, dan lapisan yang terlalu pekat akan menukar suasana dengan
+/// keterbacaan — pertukaran yang selalu merugi pada permainan luar ruang.
+/// Karena itu pula hanya bidang peta yang diwarnai: penanda checkpoint dan
+/// avatar pemain berada di atasnya dan tetap sepenuhnya jernih.
+class _TimeOfDayTint extends StatelessWidget {
+  const _TimeOfDayTint();
+
+  /// Warna untuk sebuah jam, 0–23.
+  ///
+  /// Dihitung dari jam saja, bukan dari posisi matahari yang sebenarnya.
+  /// Perhitungan astronomis akan lebih tepat, tetapi selisihnya beberapa puluh
+  /// menit pada lapisan yang nyaris tembus pandang — tidak ada yang bisa
+  /// melihat bedanya.
+  static Color _tintFor(int hour) {
+    if (hour >= 6 && hour < 16) {
+      // Siang: dibiarkan apa adanya. Palet petanya sudah dirancang untuk
+      // dilihat di bawah cahaya terang.
+      return Colors.transparent;
+    }
+    if (hour >= 16 && hour < 18) {
+      // Sore menjelang magrib — waktu paling ramai di halaman masjid.
+      return const Color(0xFFE08A3C).withValues(alpha: 0.16);
+    }
+    if (hour >= 18 && hour < 20) {
+      return const Color(0xFF6B4EA8).withValues(alpha: 0.20);
+    }
+    if (hour >= 20 || hour < 4) {
+      return const Color(0xFF10214A).withValues(alpha: 0.30);
+    }
+    // Menjelang subuh.
+    return const Color(0xFF2E4F86).withValues(alpha: 0.20);
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final tint = _tintFor(DateTime.now().hour);
+    if (tint.a == 0) return const SizedBox.shrink();
+
+    return IgnorePointer(
+      child: SizedBox.expand(child: ColoredBox(color: tint)),
+    );
   }
 }
 

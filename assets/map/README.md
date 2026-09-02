@@ -7,9 +7,9 @@ untuk area bermain saja.
 | | |
 | --- | --- |
 | Berkas | `basemap.pmtiles` |
-| Cakupan | `106.695, -6.155` → `106.785, -6.065` (±10 × 10 km, meliputi Masjid PIK) |
+| Cakupan | `106.568, -6.156` → `106.786, -6.062` (±24 × 10 km, Sepatan – Masjid Al-Ikhlas PIK) |
 | Zoom | 0–15 (ditampilkan sampai zoom 19 lewat penggambaran ulang di perangkat) |
-| Ukuran | ±5,3 MB |
+| Ukuran | ±8,1 MB |
 | Sumber | `https://build.protomaps.com/20260901.pmtiles` (basemap v4.15.2) |
 | Lisensi | ODbL — atribusi OpenStreetMap **wajib** ditampilkan |
 

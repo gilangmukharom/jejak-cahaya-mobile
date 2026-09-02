@@ -1,7 +1,7 @@
 name: jejak_cahaya
 description: Jejak Cahaya — Islamic Explorer. Permainan edukasi berbasis lokasi di area masjid.
 publish_to: 'none'
-version: 1.0.3+4
+version: 1.0.4+5
 
 environment:
   sdk: '>=3.5.0 <4.0.0'
@@ -64,6 +64,19 @@ dependencies:
   # CameraX 1.6.1 dengan compileSdk 36, dan sekaligus menangani siklus hidup
   # aplikasi meski controller disediakan sendiri.
   mobile_scanner: ^7.4.0
+
+  # ── Peta 3D (percobaan, berdampingan dengan flutter_map) ──────
+  # MapLibre adalah fork BSD dari Mapbox GL Native v1, dibuat persis ketika
+  # Mapbox pindah ke lisensi proprietary dengan token wajib: tanpa kunci API,
+  # tanpa kuota, tanpa akun. Sumber tile-nya tetap berkas .pmtiles milik
+  # sendiri, yang dibaca MapLibre secara native.
+  #
+  # Ditahan di 0.25.x, bukan 0.27.x. Versi 0.27 menarik `image` 4.x yang
+  # menuntut `archive` 4.x, sementara paket `pmtiles` yang dipakai lapisan
+  # flutter_map masih menuntut `archive` 3.x — keduanya tidak bisa hidup
+  # berdampingan. PMTiles sendiri sudah didukung sejak 0.22.0, jadi menahan
+  # versi di sini tidak mengorbankan apa pun yang dibutuhkan.
+  maplibre_gl: ^0.25.0
 
   # ── Rute ──────────────────────────────────────────────────────
   go_router: ^14.6.2

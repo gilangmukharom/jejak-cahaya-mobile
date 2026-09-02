@@ -5,17 +5,32 @@
       "type": "Feature",
       "properties": {
         "nama": "Sepatan – PIK",
-        "catatan": "Membentang dari Grand Puri Sepatan (-6.10769, 106.61614) sampai Masjid PIK (-6.1094, 106.7395). Keduanya berjarak hanya 13,7 km dan berada di lintang yang hampir sama, sehingga satu kotak menyambung (8,5 MB) nyaris sama hematnya dengan dua kotak terpisah (8,2 MB) — dan tidak meninggalkan lubang kosong di antaranya. Lokasi baru yang jaraknya jauh sebaiknya ditambahkan sebagai Feature tersendiri, bukan dengan melebarkan kotak ini."
+        "catatan": "Membentang dari Grand Puri Sepatan (-6.10769, 106.61614) sampai Masjid Al-Ikhlas PIK (-6.087036, 106.735228). Keduanya berjarak 13,4 km dan berada di lintang yang hampir sama, sehingga satu kotak menyambung nyaris sama hematnya dengan dua kotak terpisah — dan tidak meninggalkan lubang kosong di antaranya. Lokasi baru yang jaraknya jauh sebaiknya ditambahkan sebagai Feature tersendiri, bukan dengan melebarkan kotak ini."
       },
       "geometry": {
         "type": "Polygon",
         "coordinates": [
           [
-            [106.568, -6.156],
-            [106.786, -6.156],
-            [106.786, -6.062],
-            [106.568, -6.062],
-            [106.568, -6.156]
+            [
+              106.568,
+              -6.156
+            ],
+            [
+              106.786,
+              -6.156
+            ],
+            [
+              106.786,
+              -6.062
+            ],
+            [
+              106.568,
+              -6.062
+            ],
+            [
+              106.568,
+              -6.156
+            ]
           ]
         ]
       }
