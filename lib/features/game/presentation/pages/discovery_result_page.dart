@@ -10,6 +10,7 @@ import '../../../../app/theme/app_colors.dart';
 import '../../../../core/models/achievement.dart';
 import '../../../../core/models/scan_result.dart';
 import '../../../../core/widgets/app_widgets.dart';
+import '../../../../core/widgets/collectible_portrait.dart';
 import '../../../../core/widgets/unlock_progress.dart';
 import '../../../auth/presentation/cubit/auth_cubit.dart';
 
@@ -27,14 +28,36 @@ class DiscoveryResultPage extends StatefulWidget {
   State<DiscoveryResultPage> createState() => _DiscoveryResultPageState();
 }
 
-class _DiscoveryResultPageState extends State<DiscoveryResultPage> {
+class _DiscoveryResultPageState extends State<DiscoveryResultPage>
+    with TickerProviderStateMixin {
   late final ConfettiController _confetti;
+
+  /// Urutan penyingkapan, dijalankan sekali: kartu mendarat, tokohnya muncul,
+  /// lalu seberkas cahaya menyapu kartunya.
+  ///
+  /// Satu controller dengan beberapa [Interval], bukan tiga animasi terpisah:
+  /// tahapannya harus saling menyusul dengan jarak yang tetap, dan itu jauh
+  /// lebih mudah dijaga bila semuanya membaca satu garis waktu yang sama.
+  late final AnimationController _reveal;
+
+  /// Denyut aura kelangkaan, berulang selama layar terbuka.
+  late final AnimationController _glow;
 
   @override
   void initState() {
     super.initState();
     _confetti = ConfettiController(duration: const Duration(seconds: 2))
       ..play();
+
+    _reveal = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 1500),
+    )..forward();
+
+    _glow = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 2400),
+    )..repeat(reverse: true);
 
     // XP bertambah setelah penemuan, jadi kartu profil perlu disegarkan.
     // Dilakukan di sini, bukan saat berpindah dari pemindai: emisi state dari
@@ -48,6 +71,8 @@ class _DiscoveryResultPageState extends State<DiscoveryResultPage> {
   @override
   void dispose() {
     _confetti.dispose();
+    _reveal.dispose();
+    _glow.dispose();
     super.dispose();
   }
 
@@ -94,21 +119,10 @@ class _DiscoveryResultPageState extends State<DiscoveryResultPage> {
                         ),
                       ),
                       const SizedBox(height: 20),
-                      // Kartunya masuk dengan membesar dan sedikit berputar —
-                      // meniru kartu yang dibalik, momen inti permainan koleksi.
-                      TweenAnimationBuilder<double>(
-                        tween: Tween<double>(begin: 0, end: 1),
-                        duration: const Duration(milliseconds: 700),
-                        curve: Curves.easeOutBack,
-                        builder: (context, value, child) => Transform.scale(
-                          scale: 0.85 + 0.15 * value,
-                          child: Transform.rotate(
-                            angle: (1 - value) * 0.06,
-                            child: Opacity(
-                                opacity: value.clamp(0, 1), child: child),
-                          ),
-                        ),
-                        child: _CollectibleCard(result: result),
+                      _CollectibleCard(
+                        result: result,
+                        reveal: _reveal,
+                        glow: _glow,
                       ),
                       const SizedBox(height: 24),
                       _XpChip(xp: result.xpEarned),
@@ -209,9 +223,35 @@ class _DiscoveryResultPageState extends State<DiscoveryResultPage> {
 
 /// Kartu koleksi dengan bingkai berwarna sesuai kelangkaan.
 class _CollectibleCard extends StatelessWidget {
-  const _CollectibleCard({required this.result});
+  const _CollectibleCard({
+    required this.result,
+    required this.reveal,
+    required this.glow,
+  });
 
   final ScanResult result;
+
+  /// Garis waktu penyingkapan, 0→1 sekali jalan.
+  final Animation<double> reveal;
+
+  /// Denyut aura, 0↔1 berulang.
+  final Animation<double> glow;
+
+  /// Kartu mendarat lebih dulu…
+  static final Animatable<double> _cardIn = CurveTween(
+    curve: const Interval(0, 0.45, curve: Curves.easeOutBack),
+  );
+
+  /// …tokohnya menyusul, supaya kemunculannya terbaca sebagai peristiwa
+  /// tersendiri dan bukan sekadar bagian kartu yang ikut membesar.
+  static final Animatable<double> _figureIn = CurveTween(
+    curve: const Interval(0.30, 0.70, curve: Curves.easeOutCubic),
+  );
+
+  /// …lalu seberkas cahaya menyapu, menandai bahwa kartunya sudah utuh.
+  static final Animatable<double> _shine = CurveTween(
+    curve: const Interval(0.52, 1, curve: Curves.easeInOutCubic),
+  );
 
   @override
   Widget build(BuildContext context) {
@@ -219,105 +259,181 @@ class _CollectibleCard extends StatelessWidget {
     final collectible = result.collectible;
     final rarityValue = collectible.rarity.value;
 
-    return Container(
-      padding: const EdgeInsets.all(3),
-      decoration: BoxDecoration(
-        gradient: AppColors.rarityGradient(rarityValue),
-        borderRadius: BorderRadius.circular(26),
-        boxShadow: [
-          BoxShadow(
-            color: AppColors.rarity(rarityValue).withValues(alpha: 0.5),
-            blurRadius: 28,
-            spreadRadius: 2,
+    return AnimatedBuilder(
+      animation: Listenable.merge([reveal, glow]),
+      builder: (context, child) {
+        final entrance = _cardIn.evaluate(reveal);
+
+        return Transform.scale(
+          scale: 0.85 + 0.15 * entrance,
+          child: Transform.rotate(
+            angle: (1 - entrance) * 0.06,
+            child: Opacity(opacity: entrance.clamp(0, 1), child: child),
           ),
-        ],
-      ),
-      child: Container(
-        padding: const EdgeInsets.all(22),
-        decoration: BoxDecoration(
-          color: AppColors.darkSurfaceElevated,
-          borderRadius: BorderRadius.circular(23),
-        ),
-        child: Column(
-          children: [
-            Container(
-              height: 160,
-              width: double.infinity,
-              decoration: BoxDecoration(
-                color: Colors.black.withValues(alpha: 0.3),
-                borderRadius: BorderRadius.circular(16),
-              ),
-              alignment: Alignment.center,
-              // Gambar tokoh belum tersedia pada MVP; ikon dipakai sebagai
-              // penanda agar tata letak kartu sudah final saat aset masuk.
-              child: Icon(
-                collectible.type.value == 'ARTIFACT'
-                    ? Icons.museum_rounded
-                    : Icons.person_rounded,
-                size: 72,
-                color: AppColors.rarity(rarityValue),
-              ),
-            ),
-            const SizedBox(height: 18),
-            RarityBadge(rarity: rarityValue),
-            const SizedBox(height: 12),
-            Text(
-              collectible.name,
-              textAlign: TextAlign.center,
-              style: theme.textTheme.headlineSmall?.copyWith(
-                color: AppColors.textOnDark,
-                fontWeight: FontWeight.w800,
-              ),
-            ),
-            if (collectible.title != null) ...[
-              const SizedBox(height: 6),
-              Text(
-                collectible.title!,
-                textAlign: TextAlign.center,
-                style: theme.textTheme.bodyMedium?.copyWith(
-                  color: AppColors.gold,
-                  fontStyle: FontStyle.italic,
-                ),
-              ),
-            ],
-            if (collectible.era != null) ...[
-              const SizedBox(height: 10),
-              Text(
-                '${collectible.era}${collectible.region != null ? ' · ${collectible.region}' : ''}',
-                textAlign: TextAlign.center,
-                style: theme.textTheme.bodySmall?.copyWith(
-                  color: AppColors.textOnDark.withValues(alpha: 0.6),
-                ),
-              ),
-            ],
-            const SizedBox(height: 14),
-            Text(
-              collectible.summary,
-              textAlign: TextAlign.center,
-              style: theme.textTheme.bodySmall?.copyWith(
-                color: AppColors.textOnDark.withValues(alpha: 0.8),
-                height: 1.5,
-              ),
-            ),
-            const SizedBox(height: 16),
-            Row(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                const Icon(Icons.place_rounded,
-                    size: 14, color: AppColors.gold),
-                const SizedBox(width: 6),
-                Flexible(
-                  child: Text(
-                    result.checkpointName,
-                    style: theme.textTheme.labelSmall?.copyWith(
-                      color: AppColors.textOnDark.withValues(alpha: 0.6),
-                    ),
-                  ),
+        );
+      },
+      child: AnimatedBuilder(
+        animation: Listenable.merge([reveal, glow]),
+        builder: (context, _) {
+          final figure = _figureIn.evaluate(reveal).clamp(0.0, 1.0);
+          final shine = _shine.evaluate(reveal);
+
+          return Container(
+            padding: const EdgeInsets.all(3),
+            decoration: BoxDecoration(
+              gradient: AppColors.rarityGradient(rarityValue),
+              borderRadius: BorderRadius.circular(26),
+              boxShadow: [
+                BoxShadow(
+                  // Aura bernapas mengikuti [glow]. Kartu langka jadi terasa
+                  // hidup tanpa perlu elemen tambahan di layar.
+                  color: AppColors.rarity(rarityValue)
+                      .withValues(alpha: 0.34 + 0.26 * glow.value),
+                  blurRadius: 24 + 16 * glow.value,
+                  spreadRadius: 1 + 3 * glow.value,
                 ),
               ],
             ),
-          ],
-        ),
+            child: ClipRRect(
+              borderRadius: BorderRadius.circular(23),
+              child: Stack(
+                children: [
+                  Container(
+                    padding: const EdgeInsets.all(22),
+                    decoration: BoxDecoration(
+                      color: AppColors.darkSurfaceElevated,
+                      borderRadius: BorderRadius.circular(23),
+                    ),
+                    child: Column(
+                      children: [
+                        Container(
+                          height: 190,
+                          width: double.infinity,
+                          decoration: BoxDecoration(
+                            color: Colors.black.withValues(alpha: 0.3),
+                            borderRadius: BorderRadius.circular(16),
+                          ),
+                          alignment: Alignment.center,
+                          child: Transform.scale(
+                            // Sedikit membesar melewati 1 lalu turun kembali:
+                            // tokohnya terasa “muncul”, bukan sekadar memudar
+                            // masuk.
+                            scale: 0.82 + 0.18 * figure,
+                            child: Opacity(
+                              opacity: figure,
+                              child: CollectiblePortrait(
+                                slug: collectible.slug,
+                                type: collectible.type,
+                                rarityValue: rarityValue,
+                                iconSize: 72,
+                              ),
+                            ),
+                          ),
+                        ),
+                        const SizedBox(height: 18),
+                        RarityBadge(rarity: rarityValue),
+                        const SizedBox(height: 12),
+                        Text(
+                          collectible.name,
+                          textAlign: TextAlign.center,
+                          style: theme.textTheme.headlineSmall?.copyWith(
+                            color: AppColors.textOnDark,
+                            fontWeight: FontWeight.w800,
+                          ),
+                        ),
+                        if (collectible.title != null) ...[
+                          const SizedBox(height: 6),
+                          Text(
+                            collectible.title!,
+                            textAlign: TextAlign.center,
+                            style: theme.textTheme.bodyMedium?.copyWith(
+                              color: AppColors.gold,
+                              fontStyle: FontStyle.italic,
+                            ),
+                          ),
+                        ],
+                        if (collectible.era != null) ...[
+                          const SizedBox(height: 10),
+                          Text(
+                            '${collectible.era}${collectible.region != null ? ' · ${collectible.region}' : ''}',
+                            textAlign: TextAlign.center,
+                            style: theme.textTheme.bodySmall?.copyWith(
+                              color:
+                                  AppColors.textOnDark.withValues(alpha: 0.6),
+                            ),
+                          ),
+                        ],
+                        const SizedBox(height: 14),
+                        Text(
+                          collectible.summary,
+                          textAlign: TextAlign.center,
+                          style: theme.textTheme.bodySmall?.copyWith(
+                            color: AppColors.textOnDark.withValues(alpha: 0.8),
+                            height: 1.5,
+                          ),
+                        ),
+                        const SizedBox(height: 16),
+                        Row(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: [
+                            const Icon(Icons.place_rounded,
+                                size: 14, color: AppColors.gold),
+                            const SizedBox(width: 6),
+                            Flexible(
+                              child: Text(
+                                result.checkpointName,
+                                style: theme.textTheme.labelSmall?.copyWith(
+                                  color: AppColors.textOnDark
+                                      .withValues(alpha: 0.6),
+                                ),
+                              ),
+                            ),
+                          ],
+                        ),
+                      ],
+                    ),
+                  ),
+
+                  // Sapuan cahaya: sebatang gradasi miring yang melintas
+                  // sekali dari kiri ke kanan. Dipasang di dalam ClipRRect
+                  // agar terpotong rapi mengikuti sudut kartu, dan
+                  // IgnorePointer supaya tidak menghalangi sentuhan.
+                  if (shine > 0 && shine < 1)
+                    Positioned.fill(
+                      child: IgnorePointer(
+                        child: LayoutBuilder(
+                          builder: (context, constraints) {
+                            final width = constraints.maxWidth;
+                            return Transform.translate(
+                              offset: Offset(
+                                -width + (2.4 * width) * shine,
+                                0,
+                              ),
+                              child: Transform.rotate(
+                                angle: -0.42,
+                                child: Container(
+                                  width: width * 0.30,
+                                  decoration: BoxDecoration(
+                                    gradient: LinearGradient(
+                                      colors: [
+                                        Colors.white.withValues(alpha: 0),
+                                        Colors.white.withValues(alpha: 0.16),
+                                        Colors.white.withValues(alpha: 0),
+                                      ],
+                                    ),
+                                  ),
+                                ),
+                              ),
+                            );
+                          },
+                        ),
+                      ),
+                    ),
+                ],
+              ),
+            ),
+          );
+        },
       ),
     );
   }

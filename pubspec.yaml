@@ -131,6 +131,17 @@ flutter:
   assets:
     - assets/images/
     - assets/icons/
+    # Potret tokoh. Disebut per berkas, bukan sebagai direktori: mendaftarkan
+    # `assets/characters/` ikut membundel README.md di sebelahnya ke dalam APK.
+    # Nama berkas = slug collectible di backend; pemetaannya ada di
+    # core/widgets/collectible_portrait.dart, dan ada tes yang memastikan
+    # keenamnya benar-benar terjangkau dari bundel.
+    - assets/characters/bilal-bin-rabah.webp
+    - assets/characters/ibnu-battuta.webp
+    - assets/characters/ibnu-sina.webp
+    - assets/characters/muhammad-al-fatih.webp
+    - assets/characters/salahuddin-al-ayyubi.webp
+    - assets/characters/sunan-kalijaga.webp
     - assets/animations/
     # Basemap vektor offline (Protomaps v4, turunan OpenStreetMap, ODbL).
     # Disebut per berkas, bukan sebagai direktori: mendaftarkan `assets/map/`

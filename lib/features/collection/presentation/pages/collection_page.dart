@@ -9,6 +9,7 @@ import '../../../../core/models/collectible.dart';
 import '../../../../core/models/enums.dart';
 import '../../../../core/services/scan_result_holder.dart';
 import '../../../../core/widgets/app_widgets.dart';
+import '../../../../core/widgets/collectible_portrait.dart';
 import '../../../game/data/game_repository.dart';
 import '../cubit/collection_cubit.dart';
 
@@ -300,14 +301,12 @@ class _CollectionCard extends StatelessWidget {
                 Expanded(
                   child: Stack(
                     children: [
-                      Center(
-                        child: Icon(
-                          collectible.type == CollectibleType.artifact
-                              ? Icons.museum_rounded
-                              : Icons.person_rounded,
-                          size: 56,
-                          color: AppColors.rarity(rarityValue)
-                              .withValues(alpha: 0.85),
+                      Padding(
+                        padding: const EdgeInsets.fromLTRB(6, 10, 6, 0),
+                        child: CollectiblePortrait(
+                          slug: collectible.slug,
+                          type: collectible.type,
+                          rarityValue: rarityValue,
                         ),
                       ),
                       Positioned(

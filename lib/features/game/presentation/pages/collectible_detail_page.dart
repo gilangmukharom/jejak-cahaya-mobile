@@ -7,8 +7,8 @@ import '../../../../core/di/injection.dart';
 import '../../../../core/error/failure_mapper.dart';
 import '../../../../core/error/failures.dart';
 import '../../../../core/models/collectible.dart';
-import '../../../../core/models/enums.dart';
 import '../../../../core/widgets/app_widgets.dart';
+import '../../../../core/widgets/collectible_portrait.dart';
 import '../../data/game_repository.dart';
 
 /// Halaman kisah lengkap satu tokoh atau artefak.
@@ -172,12 +172,18 @@ class _DetailHeader extends StatelessWidget {
                       width: 3,
                     ),
                   ),
-                  child: Icon(
-                    collectible.type == CollectibleType.artifact
-                        ? Icons.museum_rounded
-                        : Icons.person_rounded,
-                    size: 56,
-                    color: AppColors.rarity(rarityValue),
+                  // Dipotong lingkaran mengikuti bingkainya; tanpa ClipOval
+                  // potretnya menonjol keluar dari bingkai kelangkaan.
+                  child: ClipOval(
+                    child: CollectiblePortrait(
+                      slug: collectible.slug,
+                      type: collectible.type,
+                      rarityValue: rarityValue,
+                      fit: BoxFit.cover,
+                      // Sedikit ke atas: wajah tokoh berada di paruh atas
+                      // potret, jadi pemotongan tengah akan memangkas dahi.
+                      alignment: const Alignment(0, -0.22),
+                    ),
                   ),
                 ),
                 const SizedBox(height: 16),
