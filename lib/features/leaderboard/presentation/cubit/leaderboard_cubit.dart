@@ -51,7 +51,8 @@ class LeaderboardState extends Equatable {
   List<Object?> get props => [isLoading, entries, period, myRank, failure];
 }
 
-class LeaderboardCubit extends Cubit<LeaderboardState> with SafeEmit<LeaderboardState> {
+class LeaderboardCubit extends Cubit<LeaderboardState>
+    with SafeEmit<LeaderboardState> {
   LeaderboardCubit(this._repository) : super(const LeaderboardState());
 
   final GameRepository _repository;

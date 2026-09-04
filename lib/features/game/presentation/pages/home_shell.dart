@@ -34,7 +34,7 @@ class _HomeShellState extends State<HomeShell> {
   // Kunci ini menandai tombol yang disorot penuntun sekali-jalan.
   final GlobalKey _scanKey = GlobalKey();
   final GlobalKey _collectionKey = GlobalKey();
-  final GlobalKey _missionKey = GlobalKey();
+  final GlobalKey _worshipKey = GlobalKey();
 
   @override
   void initState() {
@@ -59,11 +59,11 @@ class _HomeShellState extends State<HomeShell> {
                 'tekan tombol ini, lalu arahkan kamera ke QR di lokasi.',
           ),
           CoachStep(
-            key: _missionKey,
-            title: 'Misi',
+            key: _worshipKey,
+            title: 'Ibadah',
             description:
-                'Daftar tokoh yang bisa kamu temukan. Urutannya bebas — '
-                'datangi titik mana pun lebih dulu, sesukamu.',
+                'Jadwal sholat dan arah kiblat, dihitung dari lokasimu. '
+                'Terbuka di mana saja — tidak perlu berada di masjid.',
           ),
           CoachStep(
             key: _collectionKey,
@@ -90,7 +90,7 @@ class _HomeShellState extends State<HomeShell> {
         navigationShell: widget.navigationShell,
         scanKey: _scanKey,
         collectionKey: _collectionKey,
-        missionKey: _missionKey,
+        worshipKey: _worshipKey,
       ),
     );
   }
@@ -111,19 +111,19 @@ class _BottomNavBar extends StatelessWidget {
     required this.navigationShell,
     required this.scanKey,
     required this.collectionKey,
-    required this.missionKey,
+    required this.worshipKey,
   });
 
   final StatefulNavigationShell navigationShell;
   final GlobalKey scanKey;
   final GlobalKey collectionKey;
-  final GlobalKey missionKey;
+  final GlobalKey worshipKey;
 
   static const double _barHeight = 68;
   static const double _bottomMargin = 10;
   static const double _sideMargin = 12;
 
-  /// Urutan branch pada router: 0 peta, 1 koleksi, 2 misi, 3 profil.
+  /// Urutan branch pada router: 0 peta, 1 koleksi, 2 ibadah, 3 profil.
   static const List<_NavItem> _leftItems = [
     _NavItem(
         branch: 0,
@@ -141,9 +141,9 @@ class _BottomNavBar extends StatelessWidget {
   static const List<_NavItem> _rightItems = [
     _NavItem(
         branch: 2,
-        icon: Icons.flag_outlined,
-        activeIcon: Icons.flag_rounded,
-        label: 'Misi'),
+        icon: Icons.mosque_outlined,
+        activeIcon: Icons.mosque_rounded,
+        label: 'Ibadah'),
     _NavItem(
       branch: 3,
       icon: Icons.person_outline_rounded,
@@ -200,7 +200,7 @@ class _BottomNavBar extends StatelessWidget {
               for (final item in _rightItems)
                 Expanded(
                   child: _NavButton(
-                    key: item.branch == 2 ? missionKey : null,
+                    key: item.branch == 2 ? worshipKey : null,
                     item: item,
                     isSelected: navigationShell.currentIndex == item.branch,
                     onTap: () => _onTap(item.branch),

@@ -47,7 +47,8 @@ void main() {
     );
   });
 
-  test('gaya peta menggambar jalan dan bangunan, bukan bidang kosong', () async {
+  test('gaya peta menggambar jalan dan bangunan, bukan bidang kosong',
+      () async {
     final theme = GameMapStyle.build();
 
     // Nama layer yang dirujuk gaya harus benar-benar ada pada tile. Ini
@@ -60,7 +61,8 @@ void main() {
       reason: 'skema Protomaps v4 berubah — gaya peta perlu disesuaikan',
     );
 
-    final image = await _render(theme, vectorTile, zoom: archiveZoom.toDouble());
+    final image =
+        await _render(theme, vectorTile, zoom: archiveZoom.toDouble());
     // Disimpan sebelum diperiksa: uji yang gagal justru saat gambarnya paling
     // dibutuhkan untuk mencari tahu penyebabnya.
     await _dumpIfRequested(image, 'basemap_z$archiveZoom.png');

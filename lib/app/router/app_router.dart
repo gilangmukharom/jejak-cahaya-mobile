@@ -22,6 +22,9 @@ import '../../features/profile/presentation/pages/achievements_page.dart';
 import '../../features/profile/presentation/pages/profile_page.dart';
 import '../../features/quiz/presentation/pages/quiz_page.dart';
 import '../../features/scanner/presentation/pages/scanner_page.dart';
+import '../../features/worship/presentation/pages/prayer_settings_page.dart';
+import '../../features/worship/presentation/pages/qibla_page.dart';
+import '../../features/worship/presentation/pages/worship_page.dart';
 import 'app_routes.dart';
 
 /// Merakit rute aplikasi.
@@ -84,8 +87,8 @@ class AppRouter {
           StatefulShellBranch(
             routes: [
               GoRoute(
-                path: AppRoutes.missions,
-                builder: (context, state) => const MissionsPage(),
+                path: AppRoutes.worship,
+                builder: (context, state) => const WorshipPage(),
               ),
             ],
           ),
@@ -101,6 +104,23 @@ class AppRouter {
       ),
 
       // Layar penuh di luar cangkang.
+      GoRoute(
+        path: AppRoutes.qibla,
+        builder: (context, state) => const QiblaPage(),
+      ),
+      GoRoute(
+        path: AppRoutes.prayerSettings,
+        builder: (context, state) => const PrayerSettingsPage(),
+      ),
+
+      // Misi keluar dari cangkang saat tab-nya digantikan Ibadah. Dibuka lewat
+      // `push` dari bilah misi di atas peta dan dari halaman Profil, sehingga
+      // tombol kembali membawa pemain persis ke tempat ia menekannya.
+      GoRoute(
+        path: AppRoutes.missions,
+        builder: (context, state) => const MissionsPage(),
+      ),
+
       GoRoute(
         path: AppRoutes.scanner,
         builder: (context, state) => const ScannerPage(),

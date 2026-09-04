@@ -5,10 +5,12 @@ import 'package:shared_preferences/shared_preferences.dart';
 import '../../features/auth/data/auth_repository.dart';
 import '../../features/auth/presentation/cubit/auth_cubit.dart';
 import '../../features/game/data/game_repository.dart';
+import '../../features/game/presentation/cubit/geofence_cubit.dart';
 import '../network/api_client.dart';
 import '../network/dio_client.dart';
 import '../services/basemap_service.dart';
 import '../services/location_service.dart';
+import '../services/prayer_notification_service.dart';
 import '../services/scan_result_holder.dart';
 import '../storage/app_preferences.dart';
 import '../storage/token_storage.dart';
@@ -26,9 +28,12 @@ final GetIt sl = GetIt.instance;
 ///  • `registerLazySingleton` — dibuat saat pertama dipakai; repository tanpa state.
 ///  • `registerFactory`       — cubit berumur pendek, satu instance per layar.
 ///
-/// [AuthCubit] menjadi pengecualian: ia disimpan sebagai singleton karena router
-/// mengamatinya untuk menentukan pengalihan halaman, dan seluruh aplikasi harus
-/// melihat status sesi yang sama persis.
+/// [AuthCubit] dan [GeofenceCubit] menjadi pengecualian. Yang pertama disimpan
+/// sebagai singleton karena router mengamatinya untuk menentukan pengalihan
+/// halaman, dan seluruh aplikasi harus melihat status sesi yang sama persis.
+/// Yang kedua karena tiga layar bergantung pada jawabannya sekaligus — gerbang,
+/// peta, dan pemindai — dan membuat satu instance per layar berarti tiga
+/// langganan GPS berjalan berbarengan serta tiga jawaban yang bisa berbeda.
 Future<void> configureDependencies() async {
   // ── Penyimpanan ───────────────────────────────────────────────
   final preferences = await SharedPreferences.getInstance();
@@ -48,6 +53,12 @@ Future<void> configureDependencies() async {
   sl
     ..registerSingleton<LocationService>(LocationService())
     ..registerSingleton<ScanResultHolder>(ScanResultHolder())
+    // Jadwal sholat dihitung di perangkat; yang perlu dipegang lama hanyalah
+    // penjadwal alarmnya, yang menyiapkan basis data zona waktu dan saluran
+    // notifikasi sekali saja.
+    ..registerSingleton<PrayerNotificationService>(
+      PrayerNotificationService(sl<AppPreferences>()),
+    )
     // Singleton karena arsip petanya hanya perlu disalin dan dibuka sekali:
     // membuatnya per layar berarti menyalin ulang 5 MB setiap kali pemain
     // berpindah tab lalu kembali ke peta.
@@ -83,7 +94,15 @@ Future<void> configureDependencies() async {
         () => GameRepository(sl<ApiClient>()));
 
   // ── State global ──────────────────────────────────────────────
-  sl.registerSingleton<AuthCubit>(AuthCubit(sl<AuthRepository>()));
+  sl
+    ..registerSingleton<AuthCubit>(AuthCubit(sl<AuthRepository>()))
+    ..registerSingleton<GeofenceCubit>(
+      GeofenceCubit(
+        repository: sl<GameRepository>(),
+        locationService: sl<LocationService>(),
+        preferences: sl<AppPreferences>(),
+      ),
+    );
 }
 
 /// Membersihkan seluruh pendaftaran — dipakai pada pengujian.

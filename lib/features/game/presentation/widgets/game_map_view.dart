@@ -106,6 +106,20 @@ class GameMapViewState extends State<GameMapView>
     _followPlayer(force: true);
   }
 
+  /// Membawa kamera ke sebuah titik dan melepaskan mode ikuti.
+  ///
+  /// Dipakai kartu "di luar area" untuk menunjukkan letak masjid terdekat.
+  /// Mode ikuti sengaja dimatikan: kalau tidak, pembaruan GPS berikutnya akan
+  /// menarik kamera kembali ke pemain sebelum ia sempat melihat apa pun.
+  void focusOn(LatLng point, {double zoom = 15}) {
+    if (_isFollowing) {
+      setState(() => _isFollowing = false);
+      widget.onFollowChanged?.call(false);
+    }
+
+    _camera.animateTo(center: point, zoom: zoom, rotationDeg: 0);
+  }
+
   void _followPlayer({bool force = false}) {
     if (!_isFollowing && !force) return;
 
@@ -232,25 +246,25 @@ class GameMapViewState extends State<GameMapView>
   /// menyampaikannya.
   Widget _buildBasemapLayer(Basemap basemap) {
     return VectorTileLayer(
-          tileProviders: basemap.providers!,
-          theme: _theme,
-          // Data dalam arsip berhenti di zoom 15, sementara permainan berlangsung
-          // di zoom 18. Mode vektor menggambar ulang geometrinya pada setiap
-          // tingkat perbesaran, jadi jalan tetap tajam; mode raster hanya akan
-          // memperbesar gambar zoom 15 dan hasilnya kabur.
-          layerMode: VectorTileLayerMode.vector,
-          // Cache berkas tidak bisa dimatikan lewat API-nya, jadi ia disetel
-          // agar berperilaku sebagai salinan sekali-tulis: batas ukurannya
-          // ditaruh di atas ukuran arsip, dan masa berlakunya dibuat panjang.
-          //
-          // Menyetel keduanya ke nol — yang tampak seperti "matikan cache" —
-          // justru menghasilkan yang sebaliknya: setiap tile tetap ditulis ke
-          // disk, lalu seluruhnya dihapus pada tiap kelipatan 20 penulisan.
-          // Untuk aplikasi yang dipakai berjalan kaki, siklus tulis-hapus itu
-          // menguras baterai tanpa memberi apa pun.
-          fileCacheTtl: const Duration(days: 365),
-          fileCacheMaximumSizeInBytes: 12 * 1024 * 1024,
-        );
+      tileProviders: basemap.providers!,
+      theme: _theme,
+      // Data dalam arsip berhenti di zoom 15, sementara permainan berlangsung
+      // di zoom 18. Mode vektor menggambar ulang geometrinya pada setiap
+      // tingkat perbesaran, jadi jalan tetap tajam; mode raster hanya akan
+      // memperbesar gambar zoom 15 dan hasilnya kabur.
+      layerMode: VectorTileLayerMode.vector,
+      // Cache berkas tidak bisa dimatikan lewat API-nya, jadi ia disetel
+      // agar berperilaku sebagai salinan sekali-tulis: batas ukurannya
+      // ditaruh di atas ukuran arsip, dan masa berlakunya dibuat panjang.
+      //
+      // Menyetel keduanya ke nol — yang tampak seperti "matikan cache" —
+      // justru menghasilkan yang sebaliknya: setiap tile tetap ditulis ke
+      // disk, lalu seluruhnya dihapus pada tiap kelipatan 20 penulisan.
+      // Untuk aplikasi yang dipakai berjalan kaki, siklus tulis-hapus itu
+      // menguras baterai tanpa memberi apa pun.
+      fileCacheTtl: const Duration(days: 365),
+      fileCacheMaximumSizeInBytes: 12 * 1024 * 1024,
+    );
   }
 
   /// Lingkaran jangkauan di sekitar titik tujuan berikutnya.

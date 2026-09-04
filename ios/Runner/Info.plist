@@ -12,6 +12,8 @@
 	<string>Jejak Cahaya memerlukan lokasi Anda untuk memastikan Anda berada di area masjid dan mendeteksi checkpoint tokoh di sekitar Anda.</string>
 	<key>NSCameraUsageDescription</key>
 	<string>Kamera digunakan untuk memindai QR Code di setiap checkpoint agar tokoh Islam dapat ditemukan.</string>
+	<key>NSMotionUsageDescription</key>
+	<string>Sensor gerak dan magnet digunakan untuk menunjukkan arah kiblat pada kompas.</string>
 
 	<key>CADisableMinimumFrameDurationOnPhone</key>
 	<true/>

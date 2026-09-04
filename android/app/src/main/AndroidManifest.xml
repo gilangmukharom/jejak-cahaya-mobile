@@ -17,11 +17,34 @@
     <uses-permission android:name="android.permission.INTERNET" />
     <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" />
 
+    <!-- ══ Pengingat waktu sholat ══════════════════════════════════════════
+         Pengingatnya dititipkan ke alarm sistem, bukan ditunggu oleh aplikasi
+         yang berjalan di latar belakang. Itu berarti sistem yang perlu diberi
+         tahu dua hal: bahwa aplikasi boleh menampilkan notifikasi, dan bahwa
+         alarmnya perlu berbunyi tepat menit.
+
+         SCHEDULE_EXACT_ALARM dipilih alih-alih USE_EXACT_ALARM: yang kedua
+         diberikan tanpa bertanya, tetapi hanya boleh dipakai aplikasi jam
+         alarm dan kalender, dan Play Store mengauditnya. Yang pertama meminta
+         persetujuan pengguna lebih dulu — dan bila ditolak, jadwalnya tetap
+         terpasang, hanya dengan ketelitian beberapa menit.
+
+         RECEIVE_BOOT_COMPLETED diperlukan karena seluruh alarm dihapus sistem
+         setiap kali perangkat dimatikan; tanpa izin ini pengingat berhenti
+         diam-diam sesudah restart pertama. -->
+    <uses-permission android:name="android.permission.SCHEDULE_EXACT_ALARM" />
+    <uses-permission android:name="android.permission.RECEIVE_BOOT_COMPLETED" />
+
     <!-- GPS wajib ada di perangkat; tanpa itu aplikasi tidak dapat berfungsi
          sama sekali, jadi lebih baik tidak muncul di Play Store untuk perangkat
          tersebut daripada terpasang lalu gagal dipakai. -->
     <uses-feature android:name="android.hardware.location.gps" android:required="true" />
     <uses-feature android:name="android.hardware.camera" android:required="true" />
+
+    <!-- Kompas kiblat. Tidak diwajibkan: perangkat tanpa magnetometer tetap
+         bisa memakai seluruh aplikasi, dan layar kiblat menampilkan sudutnya
+         sebagai angka ketika jarumnya tidak bisa digerakkan. -->
+    <uses-feature android:name="android.hardware.sensor.compass" android:required="false" />
 
     <application
         android:label="Jejak Cahaya"
@@ -49,6 +72,24 @@
                 <category android:name="android.intent.category.LAUNCHER"/>
             </intent-filter>
         </activity>
+        <!-- Penerima milik flutter_local_notifications. Yang pertama
+             menampilkan notifikasi ketika alarmnya berbunyi; yang kedua
+             memasang ulang seluruh jadwal sesudah perangkat dinyalakan atau
+             aplikasinya diperbarui — dua peristiwa yang menghapus alarm. -->
+        <receiver
+            android:name="com.dexterous.flutterlocalnotifications.ScheduledNotificationReceiver"
+            android:exported="false" />
+        <receiver
+            android:name="com.dexterous.flutterlocalnotifications.ScheduledNotificationBootReceiver"
+            android:exported="false">
+            <intent-filter>
+                <action android:name="android.intent.action.BOOT_COMPLETED" />
+                <action android:name="android.intent.action.MY_PACKAGE_REPLACED" />
+                <action android:name="android.intent.action.QUICKBOOT_POWERON" />
+                <action android:name="com.htc.intent.action.QUICKBOOT_POWERON" />
+            </intent-filter>
+        </receiver>
+
         <!-- Don't delete the meta-data below.
              This is used by the Flutter tool to generate GeneratedPluginRegistrant.java -->
         <meta-data

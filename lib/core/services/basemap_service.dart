@@ -17,7 +17,8 @@ import 'package:vector_map_tiles_pmtiles/vector_map_tiles_pmtiles.dart';
 /// membawa serta alasan kegagalan dan cakupan wilayah arsip, sehingga layar
 /// peta bisa menjelaskan dirinya sendiri alih-alih diam.
 class Basemap {
-  const Basemap._({this.providers, this.southWest, this.northEast, this.failureReason});
+  const Basemap._(
+      {this.providers, this.southWest, this.northEast, this.failureReason});
 
   /// Basemap yang siap dipakai.
   const Basemap.ready({

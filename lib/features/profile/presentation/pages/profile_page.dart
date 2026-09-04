@@ -82,6 +82,18 @@ class _ProfileView extends StatelessWidget {
                 const SizedBox(height: 20),
                 if (stats != null) _StatsGrid(stats: stats),
                 const SizedBox(height: 20),
+
+                // Misi tidak lagi punya tab sendiri sejak slotnya diberikan ke
+                // Ibadah. Selain lewat bilah misi di atas peta, di sinilah ia
+                // dijangkau — dan di sini ia tetap terbuka meski pemain sedang
+                // jauh dari masjid mana pun.
+                _MenuTile(
+                  icon: Icons.flag_rounded,
+                  title: 'Misi',
+                  subtitle: 'Daftar tokoh yang bisa ditemukan',
+                  onTap: () => context.push(AppRoutes.missions),
+                ),
+                const SizedBox(height: 10),
                 _MenuTile(
                   icon: Icons.military_tech_rounded,
                   title: 'Pencapaian',

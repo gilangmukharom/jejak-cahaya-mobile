@@ -2,8 +2,11 @@ import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
 
+import 'dart:async';
+
 import '../core/config/app_config.dart';
 import '../core/di/injection.dart';
+import '../core/services/prayer_notification_service.dart';
 import '../features/auth/presentation/cubit/auth_cubit.dart';
 import 'router/app_router.dart';
 import 'theme/app_theme.dart';
@@ -30,6 +33,13 @@ class _JejakCahayaAppState extends State<JejakCahayaApp> {
     // permintaan jaringan dimulai.
     WidgetsBinding.instance.addPostFrameCallback((_) {
       _authCubit.restoreSession();
+
+      // Pengingat sholat dipasang di muka untuk tujuh hari. Jendela itu perlu
+      // diisi ulang, dan mengisinya di sini berarti ia tetap penuh bagi orang
+      // yang membuka aplikasi tetapi tidak pernah menyentuh tab Ibadah.
+      // Tidak meminta izin apa pun: bila notifikasinya belum dinyalakan atau
+      // belum ada koordinat tersimpan, panggilan ini tidak melakukan apa-apa.
+      unawaited(sl<PrayerNotificationService>().refreshFromSavedLocation());
     });
   }
 

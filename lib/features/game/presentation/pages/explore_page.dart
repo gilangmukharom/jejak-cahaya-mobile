@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:go_router/go_router.dart';
+import 'package:latlong2/latlong.dart';
 
 import '../../../../app/router/app_routes.dart';
 import '../../../../app/theme/app_colors.dart';
@@ -10,10 +11,11 @@ import '../../../../core/models/checkpoint.dart';
 import '../../../../core/services/location_service.dart';
 import '../../../../core/services/scan_result_holder.dart';
 import '../../../../core/storage/app_preferences.dart';
-import '../../../../core/widgets/app_widgets.dart';
 import '../../data/game_repository.dart';
 import '../cubit/explore_cubit.dart';
+import '../cubit/geofence_cubit.dart';
 import '../widgets/checkpoint_detail_sheet.dart';
+import '../widgets/coverage_notice.dart';
 import '../widgets/checkpoint_radar.dart';
 import '../widgets/game_map_view.dart';
 import 'home_shell.dart';
@@ -36,25 +38,31 @@ class ExplorePage extends StatelessWidget {
   Widget build(BuildContext context) {
     final mosqueId = sl<AppPreferences>().lastMosqueId;
 
-    return BlocProvider<ExploreCubit>(
-      create: (_) {
-        final cubit = ExploreCubit(
-          repository: sl<GameRepository>(),
-          locationService: sl<LocationService>(),
-          scanResults: sl<ScanResultHolder>(),
-        );
-        if (mosqueId != null) cubit.load(mosqueId);
-        return cubit;
-      },
-      child: _ExploreView(mosqueId: mosqueId),
+    return MultiBlocProvider(
+      providers: [
+        // Cubit geofence berumur sepanjang aplikasi: layar ini ikut membacanya,
+        // bukan membuat yang baru, supaya jawaban "di dalam / di luar" yang
+        // dilihat peta persis sama dengan yang dilihat gerbang dan pemindai.
+        BlocProvider<GeofenceCubit>.value(value: sl<GeofenceCubit>()),
+        BlocProvider<ExploreCubit>(
+          create: (_) {
+            final cubit = ExploreCubit(
+              repository: sl<GameRepository>(),
+              locationService: sl<LocationService>(),
+              scanResults: sl<ScanResultHolder>(),
+            );
+            if (mosqueId != null) cubit.load(mosqueId);
+            return cubit;
+          },
+        ),
+      ],
+      child: const _ExploreView(),
     );
   }
 }
 
 class _ExploreView extends StatefulWidget {
-  const _ExploreView({this.mosqueId});
-
-  final String? mosqueId;
+  const _ExploreView();
 
   @override
   State<_ExploreView> createState() => _ExploreViewState();
@@ -73,24 +81,14 @@ class _ExploreViewState extends State<_ExploreView> {
   void _openCheckpoint(Checkpoint checkpoint) =>
       CheckpointDetailSheet.show(context, checkpoint);
 
+  /// Masjid yang sedang dievaluasi, dari mana pun yang lebih dulu diketahui.
+  String? _mosqueIdOf(GeofenceState geofence) =>
+      geofence.mosque?.id ??
+      geofence.nearest?.mosque.id ??
+      sl<AppPreferences>().lastMosqueId;
+
   @override
   Widget build(BuildContext context) {
-    final mosqueId = widget.mosqueId;
-
-    if (mosqueId == null) {
-      return Scaffold(
-        body: EmptyView(
-          icon: Icons.mosque_outlined,
-          title: 'Masjid belum dipilih',
-          message: 'Kembali ke beranda untuk memilih lokasi penjelajahan.',
-          action: FilledButton(
-            onPressed: () => context.go(AppRoutes.gate),
-            child: const Text('Pilih Masjid'),
-          ),
-        ),
-      );
-    }
-
     // Ruang yang ditempati bilah navigasi mengambang milik cangkang. Peta
     // sengaja tergambar sampai ke belakangnya — hanya antarmuka yang perlu
     // menghindarinya.
@@ -100,69 +98,122 @@ class _ExploreViewState extends State<_ExploreView> {
       // Warna rumput yang sama dengan tema peta, supaya tidak ada kilatan putih
       // di sela-sela pemuatan.
       backgroundColor: GameMapStyle.groundColor,
-      body: BlocBuilder<ExploreCubit, ExploreState>(
-        builder: (context, state) {
-          final target = state.nearestPending;
+      body: BlocConsumer<GeofenceCubit, GeofenceState>(
+        // Checkpoint baru diambil ketika areanya benar-benar terbuka, atau
+        // ketika masjid yang dituju berganti. Memuatnya lebih awal hanya akan
+        // membuang permintaan: server menolak checkpoint bagi pemain di luar
+        // area, dan jawabannya tidak bisa ditampilkan pun kalau diberikan.
+        listenWhen: (previous, current) =>
+            previous.isUnlocked != current.isUnlocked ||
+            previous.mosque?.id != current.mosque?.id,
+        listener: (context, geofence) {
+          final mosqueId = _mosqueIdOf(geofence);
+          if (geofence.isUnlocked && mosqueId != null) {
+            context.read<ExploreCubit>().load(mosqueId);
+          }
+        },
+        builder: (context, geofence) {
+          final mosqueId = _mosqueIdOf(geofence);
+          final mosque = geofence.mosque ?? geofence.nearest?.mosque;
 
-          return Stack(
-            children: [
-              Positioned.fill(
-                child: GameMapView(
-                  key: _mapKey,
-                  checkpoints: state.checkpoints,
-                  position: state.position,
-                  target: target,
-                  onCheckpointTap: _openCheckpoint,
-                  onFollowChanged: (following) {
-                    if (following == _isFollowing) return;
-                    setState(() => _isFollowing = following);
-                  },
-                ),
-              ),
+          return BlocBuilder<ExploreCubit, ExploreState>(
+            builder: (context, state) {
+              final isUnlocked = geofence.isUnlocked;
+              final target = isUnlocked ? state.nearestPending : null;
 
-              // Gelap tipis di tepi atas dan bawah. Antarmuka putih yang
-              // mengambang di atas peta terang akan hilang tenggelam tanpa ini.
-              const Positioned.fill(child: _MapScrim()),
+              // Selama terkunci, posisi pemain datang dari cubit geofence —
+              // ExploreCubit belum berlangganan GPS karena belum ada apa pun
+              // yang perlu dimuat.
+              final position = state.position ?? geofence.position;
 
-              _TopHud(state: state),
+              return Stack(
+                children: [
+                  Positioned.fill(
+                    child: GameMapView(
+                      key: _mapKey,
+                      checkpoints: isUnlocked ? state.checkpoints : const [],
+                      position: position,
+                      target: target,
+                      mosqueCenter: mosque == null
+                          ? null
+                          : LatLng(mosque.latitude, mosque.longitude),
+                      onCheckpointTap: _openCheckpoint,
+                      onFollowChanged: (following) {
+                        if (following == _isFollowing) return;
+                        setState(() => _isFollowing = following);
+                      },
+                    ),
+                  ),
+                  if (!isUnlocked)
+                    Positioned.fill(
+                      child: CoverageNotice(
+                        state: geofence,
+                        onRecheck: () =>
+                            context.read<GeofenceCubit>().refresh(),
+                        onShowMosque: mosque == null
+                            ? null
+                            : () => _mapKey.currentState?.focusOn(
+                                  LatLng(mosque.latitude, mosque.longitude),
+                                ),
+                      ),
+                    ),
+                  if (isUnlocked) ...[
+                    // Gelap tipis di tepi atas dan bawah. Antarmuka putih yang
+                    // mengambang di atas peta terang akan hilang tenggelam
+                    // tanpa ini.
+                    const Positioned.fill(child: _MapScrim()),
 
-              _MapControls(
-                bottom: reservedBottom + _sheetPeekHeight + 76,
-                isFollowing: _isFollowing,
-                onRecenter: () => _mapKey.currentState?.recenter(),
-              ),
+                    _TopHud(state: state),
 
-              if (target != null)
-                _TargetChip(
-                  checkpoint: target,
-                  bottom: reservedBottom + _sheetPeekHeight + 12,
-                  onTap: () => (target.isInRange ?? false)
-                      ? context.push(AppRoutes.scanner)
-                      : _openCheckpoint(target),
-                ),
+                    _MapControls(
+                      bottom: reservedBottom + _sheetPeekHeight + 76,
+                      isFollowing: _isFollowing,
+                      onRecenter: () => _mapKey.currentState?.recenter(),
+                    ),
 
-              Padding(
-                padding: EdgeInsets.only(bottom: reservedBottom),
-                child: _CheckpointSheet(
-                  state: state,
-                  onCheckpointTap: _openCheckpoint,
-                  onRefresh: () => context.read<ExploreCubit>().load(mosqueId),
-                ),
-              ),
+                    if (target != null)
+                      _TargetChip(
+                        checkpoint: target,
+                        bottom: reservedBottom + _sheetPeekHeight + 12,
+                        onTap: () => (target.isInRange ?? false)
+                            ? context.push(AppRoutes.scanner)
+                            : _openCheckpoint(target),
+                      ),
 
-              // Keadaan luar biasa digambar paling akhir, di atas segalanya.
-              if (state.isLoading && state.checkpoints.isEmpty)
-                const _StatusPill(
-                  icon: Icons.satellite_alt_rounded,
-                  message: 'Mencari sinyal & memuat checkpoint…',
-                ),
+                    Padding(
+                      padding: EdgeInsets.only(bottom: reservedBottom),
+                      child: _CheckpointSheet(
+                        state: state,
+                        onCheckpointTap: _openCheckpoint,
+                        onRefresh: () async {
+                          if (mosqueId != null) {
+                            await context.read<ExploreCubit>().load(mosqueId);
+                          }
+                        },
+                      ),
+                    ),
 
-              if (state.failure != null && state.checkpoints.isEmpty)
-                _LoadFailureOverlay(
-                  message: state.failure!.message,
-                  onRetry: () => context.read<ExploreCubit>().load(mosqueId),
-                ),
-            ],
+                    // Keadaan luar biasa digambar paling akhir, di atas
+                    // segalanya.
+                    if (state.isLoading && state.checkpoints.isEmpty)
+                      const _StatusPill(
+                        icon: Icons.satellite_alt_rounded,
+                        message: 'Mencari sinyal & memuat checkpoint…',
+                      ),
+
+                    if (state.failure != null && state.checkpoints.isEmpty)
+                      _LoadFailureOverlay(
+                        message: state.failure!.message,
+                        onRetry: () {
+                          if (mosqueId != null) {
+                            context.read<ExploreCubit>().load(mosqueId);
+                          }
+                        },
+                      ),
+                  ],
+                ],
+              );
+            },
           );
         },
       ),
@@ -204,6 +255,9 @@ class _MapScrim extends StatelessWidget {
 /// Isinya dibatasi pada satu pertanyaan: misi apa yang sedang dijalani, dan
 /// berapa banyak yang sudah selesai. Uraian misinya sengaja tidak ikut — di
 /// layar ini pemain sedang berjalan, bukan membaca.
+///
+/// Sejak tab Misi digantikan Ibadah, bilah ini juga menjadi pintu masuk ke
+/// daftar misi: mengetuknya membuka halaman yang dulu ada di bilah bawah.
 class _TopHud extends StatelessWidget {
   const _TopHud({required this.state});
 
@@ -222,47 +276,57 @@ class _TopHud extends StatelessWidget {
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
             _FloatingSurface(
-              padding: const EdgeInsets.fromLTRB(14, 11, 14, 11),
-              child: Row(
-                children: [
-                  const Icon(Icons.flag_rounded,
-                      size: 19, color: AppColors.primary),
-                  const SizedBox(width: 9),
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        Text(
-                          mission?.title ?? 'Semua misi selesai',
-                          maxLines: 1,
-                          overflow: TextOverflow.ellipsis,
-                          style: theme.textTheme.titleSmall
-                              ?.copyWith(fontWeight: FontWeight.w800),
+              padding: EdgeInsets.zero,
+              child: InkWell(
+                onTap: () => context.push(AppRoutes.missions),
+                borderRadius: BorderRadius.circular(16),
+                child: Padding(
+                  padding: const EdgeInsets.fromLTRB(14, 11, 14, 11),
+                  child: Row(
+                    children: [
+                      const Icon(Icons.flag_rounded,
+                          size: 19, color: AppColors.primary),
+                      const SizedBox(width: 9),
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            Text(
+                              mission?.title ?? 'Semua misi selesai',
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                              style: theme.textTheme.titleSmall
+                                  ?.copyWith(fontWeight: FontWeight.w800),
+                            ),
+                            const SizedBox(height: 5),
+                            ClipRRect(
+                              borderRadius: BorderRadius.circular(999),
+                              child: LinearProgressIndicator(
+                                value: total > 0
+                                    ? state.discoveredCount / total
+                                    : 0,
+                                minHeight: 5,
+                                backgroundColor: AppColors.surfaceMuted,
+                              ),
+                            ),
+                          ],
                         ),
-                        const SizedBox(height: 5),
-                        ClipRRect(
-                          borderRadius: BorderRadius.circular(999),
-                          child: LinearProgressIndicator(
-                            value: total > 0
-                                ? state.discoveredCount / total
-                                : 0,
-                            minHeight: 5,
-                            backgroundColor: AppColors.surfaceMuted,
-                          ),
+                      ),
+                      const SizedBox(width: 12),
+                      Text(
+                        '${state.discoveredCount}/$total',
+                        style: theme.textTheme.titleSmall?.copyWith(
+                          color: AppColors.primary,
+                          fontWeight: FontWeight.w900,
                         ),
-                      ],
-                    ),
+                      ),
+                      const SizedBox(width: 4),
+                      const Icon(Icons.chevron_right_rounded,
+                          size: 20, color: AppColors.textMuted),
+                    ],
                   ),
-                  const SizedBox(width: 12),
-                  Text(
-                    '${state.discoveredCount}/$total',
-                    style: theme.textTheme.titleSmall?.copyWith(
-                      color: AppColors.primary,
-                      fontWeight: FontWeight.w900,
-                    ),
-                  ),
-                ],
+                ),
               ),
             ),
             if (state.failure != null && state.checkpoints.isNotEmpty) ...[
@@ -498,8 +562,8 @@ class _CheckpointSheet extends StatelessWidget {
                             width: 42,
                             height: 4,
                             decoration: BoxDecoration(
-                              color: AppColors.textMuted
-                                  .withValues(alpha: 0.35),
+                              color:
+                                  AppColors.textMuted.withValues(alpha: 0.35),
                               borderRadius: BorderRadius.circular(999),
                             ),
                           ),

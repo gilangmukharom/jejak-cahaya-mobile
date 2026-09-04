@@ -85,8 +85,7 @@ class GameMapCamera {
       final t = _curved.value;
       controller.moveAndRotate(
         LatLng(
-          beginCenter.latitude +
-              (center.latitude - beginCenter.latitude) * t,
+          beginCenter.latitude + (center.latitude - beginCenter.latitude) * t,
           beginCenter.longitude +
               (center.longitude - beginCenter.longitude) * t,
         ),

@@ -67,7 +67,8 @@ class CollectionState extends Equatable {
 }
 
 /// Galeri koleksi pemain, dengan paginasi dan penyaringan per kategori.
-class CollectionCubit extends Cubit<CollectionState> with SafeEmit<CollectionState> {
+class CollectionCubit extends Cubit<CollectionState>
+    with SafeEmit<CollectionState> {
   CollectionCubit(this._repository, ScanResultHolder scanResults)
       : super(const CollectionState()) {
     // Tab koleksi mempertahankan state-nya, jadi tokoh yang baru ditemukan

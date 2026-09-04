@@ -61,7 +61,7 @@ lib/
 │   ├── error/                   # Failure, exception, dan pemetaannya
 │   ├── models/                  # Model domain lintas fitur
 │   ├── network/                 # Dio + interceptor, ApiClient
-│   ├── services/                # LocationService (GPS, geofence, bearing)
+│   ├── services/                # LocationService, jadwal sholat, kiblat, notifikasi
 │   ├── storage/                 # Token (terenkripsi) & preferensi
 │   └── widgets/                 # Widget bersama
 └── features/
@@ -71,6 +71,7 @@ lib/
     ├── collection/              # Galeri koleksi
     ├── mission/                 # Daftar & detail misi
     ├── quiz/                    # Pengerjaan quiz
+    ├── worship/                 # Jadwal sholat & arah kiblat
     ├── leaderboard/             # Papan peringkat
     └── profile/                 # Profil & pencapaian
 ```
@@ -149,10 +150,51 @@ ditampilkan (ODbL) dan sudah terpasang lewat `MapAttribution`.
 
 ### Geofence terus dipantau, bukan sekali cek
 
-`GeofenceCubit` memantau aliran posisi, sehingga gerbang terbuka sendiri begitu
+`GeofenceCubit` memantau aliran posisi, sehingga peta terbuka sendiri begitu
 pemain melangkah masuk ke area masjid. Pemeriksaan ke server dijarangkan
-(minimal 8 detik) agar berjalan menyusuri halaman masjid tidak menghasilkan
-puluhan permintaan per menit.
+(minimal 8 detik di luar area, 30 detik di dalam) agar berjalan menyusuri
+halaman masjid tidak menghasilkan puluhan permintaan per menit.
+
+Cubit-nya berumur sepanjang aplikasi dan didaftarkan di `core/di/injection.dart`,
+bukan dibuat per layar: tiga layar bergantung pada jawabannya sekaligus —
+gerbang, peta, dan pemindai — dan satu instance per layar berarti tiga langganan
+GPS berjalan berbarengan serta tiga jawaban yang bisa berbeda.
+
+### Di luar area, yang terkunci hanya peta
+
+Berada di luar radius masjid **tidak** menutup aplikasi. Yang tertutup hanyalah
+peta permainan: petanya tetap tergambar tetapi dikaburkan, dan di atasnya
+muncul kartu berisi nama masjid terdekat yang bisa dimainkan beserta sisa jarak
+menuju tepi areanya (dihitung lokal dengan rumus yang sama dengan server, jadi
+angkanya tidak berselisih dengan jawaban resmi).
+
+Jadwal sholat, arah kiblat, koleksi, misi, papan peringkat, dan profil tetap
+terbuka dari mana saja. Pemindai pun tidak dihalangi — penolakannya datang dari
+server dengan alasan yang sudah spesifik.
+
+### Jadwal sholat dihitung di perangkat
+
+`PrayerTimesCalculator` menghitung posisi matahari sendiri (algoritma yang sama
+dengan PrayTimes.org), jadi jadwalnya benar tanpa satu pun permintaan jaringan
+— penting karena ini satu-satunya bagian aplikasi yang harus tetap bekerja di
+ruang bawah masjid tanpa sinyal.
+
+Metode bawaan Kemenag RI (Subuh 20°, Isya 18°, ihtiyati 2 menit); MWL, Egyptian,
+Umm al-Qura, dan ISNA bisa dipilih, begitu pula mazhab waktu Ashar. Lintang
+tinggi ditangani dengan aturan pembagian malam berbasis sudut, sehingga London
+di bulan Juni tetap menghasilkan jadwal utuh alih-alih NaN.
+
+Pengingatnya dititipkan ke alarm sistem lewat `flutter_local_notifications` —
+tujuh hari sekaligus, diisi ulang setiap aplikasi dibuka. Aplikasi tidak berjalan
+di latar belakang untuk menunggu jam empat pagi.
+
+### Kompas kiblat dirakit sendiri
+
+Arah hadap dihitung dari akselerometer + magnetometer dengan rumus yang sama
+dengan `SensorManager.getRotationMatrix` di Android, jadi hasilnya sudah
+terkoreksi kemiringan. Paket kompas siap pakai yang beredar tidak dipakai:
+semuanya sudah lama tidak dirawat dan tidak punya `namespace`, sehingga gagal
+dibangun pada Android Gradle Plugin yang dipakai proyek ini.
 
 ### Refresh token disatukan
 
@@ -169,27 +211,39 @@ ter-logout paksa.
 Splash ──► Login / Daftar
              │
              ▼
-      Geofence Gate  ──(di luar area)──► Layar terkunci + jarak ke masjid
+      Geofence Gate  (hanya menunggu sinyal GPS — tidak menahan siapa pun)
              │
-       (di dalam area)
              ▼
-   ┌──── Home Shell (4 tab) ────┐
-   │  Peta · Koleksi · Misi · Profil
-   └────────────┬───────────────┘
-                │  (FAB pindai)
-                ▼
-         Pemindai QR ──► Hasil Penemuan ──► Quiz ──► Peta
-                  └──► Ditolak (alasan + petunjuk) ──► Pindai lagi
+   ┌──── Home Shell (4 tab) ─────────┐
+   │  Peta · Koleksi · Ibadah · Profil
+   └────────────┬────────────────────┘
+                │
+     ┌──────────┴───────────┬──────────────────┐
+     ▼                      ▼                  ▼
+  Peta                   Ibadah            (FAB pindai)
+   ├─(di dalam area)      ├─ Jadwal sholat      │
+   │   checkpoint, radar  ├─ Arah kiblat        ▼
+   └─(di luar area)       └─ Pengaturan   Pemindai QR
+       peta blur +           notifikasi     ├─► Hasil Penemuan ──► Quiz
+       masjid terdekat                      └─► Ditolak (alasan + petunjuk)
+       + sisa jarak
+
+Misi tidak lagi punya tab sendiri: dijangkau dari bilah misi di atas peta
+dan dari halaman Profil.
 ```
 
 ---
 
 ## Izin
 
-| Izin      | Alasan                                                             |
-| --------- | ------------------------------------------------------------------ |
-| Lokasi    | Geofence masjid (Layer 1) dan proximity checkpoint (Layer 2)        |
-| Kamera    | Memindai QR checkpoint (Layer 3)                                   |
+| Izin                    | Alasan                                                       |
+| ----------------------- | ------------------------------------------------------------ |
+| Lokasi                  | Geofence masjid (Layer 1), proximity checkpoint (Layer 2), dan koordinat jadwal sholat & arah kiblat |
+| Kamera                  | Memindai QR checkpoint (Layer 3)                             |
+| Notifikasi              | Pengingat waktu sholat — diminta hanya saat pengguna menyalakannya |
+| `SCHEDULE_EXACT_ALARM`  | Agar pengingat berbunyi tepat menit. Ditolak pun jadwalnya tetap terpasang, hanya dengan ketelitian beberapa menit |
+| `RECEIVE_BOOT_COMPLETED`| Memasang ulang pengingat setelah perangkat dinyalakan; sistem menghapus seluruh alarm saat mati |
+| Sensor magnet           | Kompas kiblat. Tidak diwajibkan — tanpa magnetometer, sudutnya tetap ditampilkan sebagai angka |
 
 Sudah dikonfigurasi di `AndroidManifest.xml` dan `ios/Runner/Info.plist`.
 Lokasi presisi (`ACCESS_FINE_LOCATION`) diperlukan karena radius checkpoint

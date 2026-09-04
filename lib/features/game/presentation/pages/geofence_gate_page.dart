@@ -6,29 +6,58 @@ import '../../../../app/router/app_routes.dart';
 import '../../../../app/theme/app_colors.dart';
 import '../../../../core/di/injection.dart';
 import '../../../../core/error/failures.dart';
-import '../../../../core/services/location_service.dart';
-import '../../../../core/storage/app_preferences.dart';
-import '../../data/game_repository.dart';
-import '../cubit/geofence_cubit.dart';
 import '../../../../core/widgets/supported_by_pik2.dart';
+import '../cubit/geofence_cubit.dart';
 
-/// Gerbang masuk permainan — penegakan Layer 1 di sisi antarmuka.
+/// Layar pembuka: mencari sinyal GPS, lalu meneruskan pemain ke aplikasi.
 ///
-/// Selama pemain berada di luar radius masjid, layar ini menahan mereka dan
-/// menunjukkan berapa jauh lagi jarak yang harus ditempuh. Cubit terus memantau
-/// posisi, jadi gerbang terbuka sendiri begitu pemain melangkah masuk — tanpa
-/// perlu menutup dan membuka ulang aplikasi.
-class GeofenceGatePage extends StatelessWidget {
+/// Dulu layar ini adalah gerbang dalam arti sesungguhnya — ia menahan siapa pun
+/// yang berada di luar radius masjid dan tidak melepasnya sampai mereka datang.
+/// Sekarang tidak lagi. Berada di luar area hanya berarti peta dan pemindai
+/// tertutup; jadwal sholat, arah kiblat, koleksi, misi, dan profil tetap bisa
+/// dibuka, dan kabar "Anda di luar area" disampaikan di tab Peta, di tempat
+/// yang memang menjelaskan apa yang sedang terkunci.
+///
+/// Yang tersisa di sini hanyalah dua pekerjaan yang memang harus terjadi lebih
+/// dulu: meminta izin lokasi, dan menunggu bacaan GPS pertama. Keduanya pun
+/// bisa dilewati — tombol di layar izin membiarkan pemain masuk tanpa lokasi.
+class GeofenceGatePage extends StatefulWidget {
   const GeofenceGatePage({super.key});
 
   @override
+  State<GeofenceGatePage> createState() => _GeofenceGatePageState();
+}
+
+class _GeofenceGatePageState extends State<GeofenceGatePage> {
+  late final GeofenceCubit _cubit = sl<GeofenceCubit>();
+
+  @override
+  void initState() {
+    super.initState();
+
+    // Cubit-nya berumur sepanjang aplikasi, jadi pemeriksaan hanya dimulai
+    // ketika memang belum pernah berjalan — pemain yang kembali ke gerbang
+    // setelah keluar-masuk akun tidak perlu menunggu GPS dari nol lagi.
+    if (_cubit.state.stage == GeofenceStage.initial) {
+      _cubit.initialize();
+      return;
+    }
+
+    // Jawabannya sudah ada dari sesi sebelumnya. Pendengar di bawah hanya
+    // menyala pada *perubahan* menjadi terjawab, jadi tanpa langkah ini layar
+    // akan berhenti selamanya pada pemutar tunggu — persis pada pemain yang
+    // baru saja masuk kembali ke akunnya.
+    if (_cubit.state.isResolved) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (mounted) context.go(AppRoutes.explore);
+      });
+    }
+  }
+
+  @override
   Widget build(BuildContext context) {
-    return BlocProvider<GeofenceCubit>(
-      create: (_) => GeofenceCubit(
-        repository: sl<GameRepository>(),
-        locationService: sl<LocationService>(),
-        preferences: sl<AppPreferences>(),
-      )..initialize(),
+    return BlocProvider<GeofenceCubit>.value(
+      value: _cubit,
       child: const _GeofenceGateView(),
     );
   }
@@ -45,19 +74,20 @@ class _GeofenceGateView extends StatelessWidget {
         child: SafeArea(
           child: BlocConsumer<GeofenceCubit, GeofenceState>(
             listenWhen: (previous, current) =>
-                !previous.isUnlocked && current.isUnlocked,
+                !previous.isResolved && current.isResolved,
             listener: (context, state) {
-              // Begitu pemain masuk area, langsung teruskan ke peta.
+              // Terjawab — apa pun jawabannya. Pemain diteruskan ke peta, dan
+              // peta sendiri yang memutuskan menampilkan permainan atau kartu
+              // "di luar area".
               context.go(AppRoutes.explore);
             },
             builder: (context, state) => switch (state.stage) {
               GeofenceStage.initial ||
               GeofenceStage.locating =>
                 const _LocatingView(),
-              GeofenceStage.inside => const _LocatingView(
-                  message: 'Membuka penjelajahan…',
-                ),
-              GeofenceStage.outside => _OutsideView(state: state),
+              GeofenceStage.inside ||
+              GeofenceStage.outside =>
+                const _LocatingView(message: 'Membuka aplikasi…'),
               GeofenceStage.locationBlocked => _BlockedView(state: state),
               GeofenceStage.error => _ErrorView(state: state),
             },
@@ -125,120 +155,6 @@ class _LocatingView extends StatelessWidget {
   }
 }
 
-/// Layar terkunci: pemain berada di luar radius masjid.
-class _OutsideView extends StatelessWidget {
-  const _OutsideView({required this.state});
-
-  final GeofenceState state;
-
-  @override
-  Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-    final status = state.status;
-    final mosqueName = status?.mosque.name ?? 'masjid';
-    final away = state.metersAway ?? 0;
-
-    return Padding(
-      padding: const EdgeInsets.all(28),
-      child: Column(
-        mainAxisAlignment: MainAxisAlignment.center,
-        children: [
-          Container(
-            padding: const EdgeInsets.all(26),
-            decoration: BoxDecoration(
-              color: AppColors.gold.withValues(alpha: 0.12),
-              shape: BoxShape.circle,
-              border: Border.all(color: AppColors.gold.withValues(alpha: 0.4)),
-            ),
-            child: const Icon(
-              Icons.lock_outline_rounded,
-              size: 52,
-              color: AppColors.gold,
-            ),
-          ),
-          const SizedBox(height: 32),
-          Text(
-            'Jejak Cahaya Terkunci',
-            textAlign: TextAlign.center,
-            style: theme.textTheme.headlineSmall?.copyWith(
-              color: AppColors.textOnDark,
-              fontWeight: FontWeight.w800,
-            ),
-          ),
-          const SizedBox(height: 12),
-          Text(
-            'Permainan hanya dapat dimainkan di dalam area $mosqueName.',
-            textAlign: TextAlign.center,
-            style: theme.textTheme.bodyLarge?.copyWith(
-              color: AppColors.textOnDark.withValues(alpha: 0.75),
-            ),
-          ),
-          const SizedBox(height: 32),
-          Container(
-            padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 20),
-            decoration: BoxDecoration(
-              color: Colors.white.withValues(alpha: 0.08),
-              borderRadius: BorderRadius.circular(18),
-              border: Border.all(color: Colors.white.withValues(alpha: 0.12)),
-            ),
-            child: Column(
-              children: [
-                Text(
-                  'Jarak Anda ke area masjid',
-                  style: theme.textTheme.labelMedium?.copyWith(
-                    color: AppColors.textOnDark.withValues(alpha: 0.6),
-                  ),
-                ),
-                const SizedBox(height: 8),
-                Text(
-                  _formatDistance(away),
-                  style: theme.textTheme.displaySmall?.copyWith(
-                    color: AppColors.gold,
-                    fontWeight: FontWeight.w800,
-                  ),
-                ),
-                const SizedBox(height: 4),
-                Text(
-                  'Radius area: ${status?.radiusMeters ?? 250} m',
-                  style: theme.textTheme.bodySmall?.copyWith(
-                    color: AppColors.textOnDark.withValues(alpha: 0.55),
-                  ),
-                ),
-              ],
-            ),
-          ),
-          const SizedBox(height: 36),
-          SizedBox(
-            width: double.infinity,
-            child: OutlinedButton.icon(
-              onPressed: () => context.read<GeofenceCubit>().refresh(),
-              icon: const Icon(Icons.my_location_rounded, size: 20),
-              label: const Text('Periksa Lokasi Saya'),
-              style: OutlinedButton.styleFrom(
-                foregroundColor: AppColors.gold,
-                side: const BorderSide(color: AppColors.gold, width: 1.5),
-              ),
-            ),
-          ),
-          const SizedBox(height: 12),
-          Text(
-            'Lokasi diperiksa otomatis — layar akan terbuka\nsendiri saat Anda tiba di masjid.',
-            textAlign: TextAlign.center,
-            style: theme.textTheme.bodySmall?.copyWith(
-              color: AppColors.textOnDark.withValues(alpha: 0.5),
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
-  String _formatDistance(double meters) {
-    if (meters < 1000) return '${meters.round()} m';
-    return '${(meters / 1000).toStringAsFixed(1).replaceAll('.', ',')} km';
-  }
-}
-
 /// Izin lokasi ditolak atau GPS mati.
 class _BlockedView extends StatelessWidget {
   const _BlockedView({required this.state});
@@ -303,6 +219,19 @@ class _BlockedView extends StatelessWidget {
               ),
             ),
           ),
+          const SizedBox(height: 10),
+
+          // Tanpa lokasi, yang hilang hanyalah permainannya. Jadwal sholat masih
+          // bisa dihitung dari posisi tersimpan, dan sisa aplikasi tidak
+          // memerlukan koordinat sama sekali — jadi menahan orang di layar ini
+          // hanya akan menutup hal-hal yang sebetulnya siap dipakai.
+          TextButton(
+            onPressed: () => context.go(AppRoutes.explore),
+            style: TextButton.styleFrom(
+              foregroundColor: AppColors.textOnDark.withValues(alpha: 0.8),
+            ),
+            child: const Text('Lanjut tanpa lokasi'),
+          ),
         ],
       ),
     );
@@ -351,6 +280,17 @@ class _ErrorView extends StatelessWidget {
               ),
               child: const Text('Coba Lagi'),
             ),
+          ),
+          const SizedBox(height: 10),
+
+          // Daftar masjid gagal dimuat bukan alasan menutup jadwal sholat, yang
+          // dihitung sepenuhnya di perangkat dan tidak memerlukan server.
+          TextButton(
+            onPressed: () => context.go(AppRoutes.worship),
+            style: TextButton.styleFrom(
+              foregroundColor: AppColors.textOnDark.withValues(alpha: 0.8),
+            ),
+            child: const Text('Buka jadwal sholat'),
           ),
         ],
       ),

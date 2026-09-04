@@ -10,6 +10,14 @@ android {
     ndkVersion = flutter.ndkVersion
 
     compileOptions {
+        // Diperlukan flutter_local_notifications: pustaka itu memakai API waktu
+        // dari Java 8 (java.time) untuk menjadwalkan alarm, sementara Android
+        // baru menyediakannya sejak API 26. Desugaring menuliskan ulang
+        // pemanggilannya saat build sehingga tetap berjalan di perangkat lama.
+        // Wajib dinyalakan meskipun aplikasi tidak memakai penjadwalan sama
+        // sekali — tanpanya build gagal saat menautkan pustakanya.
+        isCoreLibraryDesugaringEnabled = true
+
         sourceCompatibility = JavaVersion.VERSION_17
         targetCompatibility = JavaVersion.VERSION_17
     }
@@ -43,6 +51,12 @@ android {
             )
         }
     }
+}
+
+dependencies {
+    // Versinya disamakan dengan yang dipakai flutter_local_notifications; dua
+    // versi desugar_jdk_libs yang berbeda dalam satu build akan bentrok.
+    coreLibraryDesugaring("com.android.tools:desugar_jdk_libs:2.1.4")
 }
 
 kotlin {

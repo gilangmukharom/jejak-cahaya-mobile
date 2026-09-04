@@ -89,6 +89,29 @@ dependencies:
   # Versi di-pin oleh flutter_localizations dari SDK — jangan naikkan sendiri.
   intl: ^0.20.2
 
+  # ── Ibadah: jadwal sholat & arah kiblat ───────────────────────
+  #
+  # Jadwalnya dihitung sendiri di perangkat (core/services/prayer_times_service),
+  # jadi tidak ada paket hisab di sini dan tidak ada API jadwal yang dipanggil.
+  # Yang dibutuhkan hanyalah tiga hal yang memang tidak bisa dikerjakan Dart
+  # murni: memasang alarm sistem, mengetahui zona waktu perangkat, dan membaca
+  # sensor magnet.
+
+  # Pengingat waktu sholat dititipkan ke alarm sistem — aplikasi tidak berjalan
+  # di latar belakang menunggu jam empat pagi.
+  flutter_local_notifications: ^22.3.0
+
+  # Alarm dijadwalkan pada jam dinding setempat, bukan pada selisih durasi.
+  # Bedanya baru terlihat di zona berwaktu musim panas, tetapi di sanalah
+  # jadwal yang salah satu jam paling merugikan.
+  timezone: ^0.11.1
+  flutter_timezone: ^5.1.0
+
+  # Kompas kiblat dirakit dari akselerometer + magnetometer. Paket kompas siap
+  # pakai yang beredar sudah lama tidak dirawat dan tidak punya `namespace`,
+  # sehingga gagal dibangun pada Android Gradle Plugin yang dipakai proyek ini.
+  sensors_plus: ^7.1.0
+
 dev_dependencies:
   flutter_test:
     sdk: flutter
