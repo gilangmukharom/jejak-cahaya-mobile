@@ -27,7 +27,7 @@ tertanam saat build: build produksi tidak mungkin diam-diam menunjuk API lokal.
 | Android Emulator      | `http://10.0.2.2:3000/api/v1`         |
 | iOS Simulator         | `http://localhost:3000/api/v1`        |
 | Perangkat fisik (LAN) | `http://<IP-komputer>:3000/api/v1`    |
-| Production            | `https://api.jejakcahaya.id/api/v1`   |
+| Production            | `https://api.jejak-cahaya.com/api/v1` |
 
 > Untuk perangkat fisik dengan backend HTTP (bukan HTTPS), Android 9+ memblokir
 > cleartext secara bawaan. Tambahkan `android:usesCleartextTraffic="true"` pada

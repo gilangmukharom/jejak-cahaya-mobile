@@ -1,7 +1,30 @@
+import java.util.Properties
+
 plugins {
     id("com.android.application")
     // The Flutter Gradle Plugin must be applied after the Android and Kotlin Gradle plugins.
     id("dev.flutter.flutter-gradle-plugin")
+}
+
+// ── Kredensial penandatanganan ────────────────────────────────────────
+//
+// Dibaca dari `android/key.properties`, yang TIDAK ikut ke dalam repo. Kunci
+// penandatanganan adalah satu-satunya benda di proyek ini yang tidak bisa
+// dibuat ulang: Android menolak pembaruan yang tanda tangannya berbeda, jadi
+// keystore yang hilang berarti setiap pengguna harus mencopot pemasangan
+// lebih dulu sebelum bisa memperbarui.
+//
+// Ketiadaan berkas itu bukan galat. Orang lain yang mengambil repo ini harus
+// tetap bisa menjalankan `flutter build apk --release` untuk mencoba sendiri;
+// yang mereka dapat hanyalah APK bertanda tangan debug, dan blok `release`
+// di bawah menyatakannya secara eksplisit alih-alih gagal dengan pesan yang
+// membingungkan.
+val keystoreProperties = Properties()
+val keystorePropertiesFile = rootProject.file("key.properties")
+val hasReleaseKeystore = keystorePropertiesFile.exists()
+
+if (hasReleaseKeystore) {
+    keystorePropertiesFile.inputStream().use { keystoreProperties.load(it) }
 }
 
 android {
@@ -33,11 +56,30 @@ android {
         versionName = flutter.versionName
     }
 
+    signingConfigs {
+        if (hasReleaseKeystore) {
+            create("release") {
+                storeFile = file(keystoreProperties.getProperty("storeFile"))
+                storePassword = keystoreProperties.getProperty("storePassword")
+                keyAlias = keystoreProperties.getProperty("keyAlias")
+                keyPassword = keystoreProperties.getProperty("keyPassword")
+            }
+        }
+    }
+
     buildTypes {
         release {
-            // TODO: Add your own signing config for the release build.
-            // Signing with the debug keys for now, so `flutter run --release` works.
-            signingConfig = signingConfigs.getByName("debug")
+            signingConfig = if (hasReleaseKeystore) {
+                signingConfigs.getByName("release")
+            } else {
+                // Tanpa keystore, build tetap jalan tetapi hasilnya hanya
+                // layak untuk dicoba sendiri — Play Store menolaknya, dan ia
+                // tidak bisa memperbarui pemasangan yang bertanda tangan rilis.
+                logger.lifecycle(
+                    "key.properties tidak ditemukan — APK release ditandatangani kunci debug.",
+                )
+                signingConfigs.getByName("debug")
+            }
 
             // R8 berjalan pada build release dan TIDAK berjalan pada build
             // debug. Itulah mengapa kamera bisa menyala mulus lewat
