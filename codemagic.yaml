@@ -9,6 +9,10 @@
 # menuntut keanggotaan Apple Developer Program berbayar; Sideloadly bisa
 # melakukannya secara lokal dengan Apple ID gratis.
 #
+# PENTING: Codemagic mengabaikan berkas ini selama aplikasi masih memakai
+# Workflow Editor. Di halaman pengaturan aplikasi, tekan lebih dulu
+# "Switch to YAML configuration".
+#
 # Panduan langkah demi langkah: jejak-cahaya-docs/panduan-ios.html
 
 workflows:
@@ -18,10 +22,20 @@ workflows:
 
     # 45, bukan 30. Build pertama mengunduh MapLibre 6.19.1 dari nol dan
     # mengompilasi seluruh dependensi; 30 menit terlalu ketat untuk itu.
-    # Build berikutnya jauh lebih singkat karena sebagian sudah di-cache.
+    # Build berikutnya jauh lebih singkat karena cache di bawah.
     max_build_duration: 45
 
     environment:
+      # `stable` dipakai supaya build pertama tidak gagal hanya karena versi
+      # yang diminta tidak tersedia di Codemagic. Bila suatu saat build mulai
+      # rusak sendiri padahal kode tidak berubah, sematkan versinya agar sama
+      # dengan yang di laptop — ganti baris ini menjadi:
+      #
+      #   flutter: 3.44.4
+      #
+      # Menyematkan versi penting justru karena Anda tidak punya Mac: kalau
+      # `stable` bergerak dan build patah, kerusakannya tidak bisa
+      # direproduksi di mana pun untuk ditelusuri.
       flutter: stable
       xcode: latest
       cocoapods: default
@@ -37,9 +51,52 @@ workflows:
         # /auth/login dan dijawab 404.
         API_BASE_URL: "https://api.jejak-cahaya.com/api/v1"
 
+    # ── Cache ────────────────────────────────────────────────────────
+    #
+    # Menghemat 3–5 menit per build, hampir seluruhnya dari unduhan MapLibre
+    # 6.19.1 yang berukuran besar.
+    #
+    # `ios/Pods` SENGAJA tidak ikut di-cache. Folder itu harus selalu
+    # dirakit ulang dari Podfile.lock; Pods basi yang tertinggal setelah
+    # dependensi berubah menghasilkan galat penautan yang menyesatkan —
+    # menyebut nama pod, bukan menyebut bahwa isinya kedaluwarsa. Yang
+    # di-cache hanyalah unduhannya, sehingga perakitan ulang tetap cepat.
+    cache:
+      cache_paths:
+        - $HOME/.pub-cache
+        - $HOME/Library/Caches/CocoaPods
+
+    # ── Pemicu otomatis ──────────────────────────────────────────────
+    #
+    # Sengaja dibiarkan mati. Paket gratis memberi 500 menit macOS sebulan,
+    # sementara satu build iOS memakan 12–18 menit — membangun otomatis di
+    # setiap push ke master akan menghabiskannya dalam hitungan hari, padahal
+    # sebagian besar commit tidak menyentuh sisi iOS sama sekali.
+    #
+    # Build dijalankan manual lewat tombol "Start new build". Bila kelak
+    # pindah ke akun berbayar, hapus tanda komentar di bawah.
+    #
+    # triggering:
+    #   events:
+    #     - push
+    #   branch_patterns:
+    #     - pattern: master
+    #       include: true
+    #       source: true
+
     scripts:
       - name: Ambil paket Flutter
         script: flutter pub get
+
+      # Analisis dan pengujian ditaruh SEBELUM build, bukan sesudahnya.
+      # Keduanya selesai dalam ~1 menit, sementara build iOS memakan 12–18
+      # menit; menjalankannya lebih dulu berarti kesalahan yang sebenarnya
+      # bisa ditangkap di laptop tidak sampai membakar kuota bulanan.
+      - name: Analisis statis
+        script: flutter analyze
+
+      - name: Uji unit & widget
+        script: flutter test
 
       - name: Pasang pod
         # `flutter build` sebenarnya memanggil pod install sendiri. Langkah
@@ -77,3 +134,14 @@ workflows:
 
     artifacts:
       - JejakCahaya-unsigned.ipa
+
+    publishing:
+      # Tautan unduhan dikirim lewat surel supaya .ipa bisa diambil tanpa
+      # membuka dasbor. `failure: true` sama pentingnya dengan `success`:
+      # build yang gagal diam-diam adalah build yang ditunggu percuma.
+      email:
+        recipients:
+          - gilangmukharom@gmail.com
+        notify:
+          success: true
+          failure: true
