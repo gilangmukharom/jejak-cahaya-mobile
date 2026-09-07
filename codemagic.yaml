@@ -1,0 +1,79 @@
+# ══ Build iOS dari Windows ═══════════════════════════════════════════
+#
+# Proyek ini dikembangkan di Windows, sementara mengompilasi Flutter ke iOS
+# mutlak menuntut macOS dan Xcode. Berkas inilah jembatannya: Codemagic
+# menjalankan build di Mac mini awan, hasilnya diunduh ke Windows, lalu
+# ditandatangani dan dipasang ke perangkat memakai Sideloadly.
+#
+# Hasil build ini SENGAJA tanpa tanda tangan. Menandatanganinya di sini
+# menuntut keanggotaan Apple Developer Program berbayar; Sideloadly bisa
+# melakukannya secara lokal dengan Apple ID gratis.
+#
+# Panduan langkah demi langkah: jejak-cahaya-docs/panduan-ios.html
+
+workflows:
+  ios_unsigned:
+    name: iOS unsigned build
+    instance_type: mac_mini_m2
+
+    # 45, bukan 30. Build pertama mengunduh MapLibre 6.19.1 dari nol dan
+    # mengompilasi seluruh dependensi; 30 menit terlalu ketat untuk itu.
+    # Build berikutnya jauh lebih singkat karena sebagian sudah di-cache.
+    max_build_duration: 45
+
+    environment:
+      flutter: stable
+      xcode: latest
+      cocoapods: default
+
+      vars:
+        # Alamat backend tertanam saat kompilasi, bukan dibaca saat aplikasi
+        # berjalan — lihat alasannya di lib/core/config/app_config.dart.
+        # Mengubahnya karena itu menuntut build baru, bukan sekadar setelan.
+        #
+        # Akhiran /api/v1 wajib ikut: seluruh jalur di
+        # core/constants/api_endpoints.dart ditulis relatif terhadap nilai
+        # ini, jadi tanpa akhiran itu setiap permintaan mendarat di
+        # /auth/login dan dijawab 404.
+        API_BASE_URL: "https://api.jejak-cahaya.com/api/v1"
+
+    scripts:
+      - name: Ambil paket Flutter
+        script: flutter pub get
+
+      - name: Pasang pod
+        # `flutter build` sebenarnya memanggil pod install sendiri. Langkah
+        # ini dipisahkan supaya kegagalan CocoaPods muncul sebagai langkah
+        # yang gagal dengan namanya sendiri, bukan terkubur di tengah log
+        # Xcode yang panjang.
+        #
+        # Pod tetap diperlukan meski proyek Xcode-nya sudah memakai Swift
+        # Package Manager: flutter_secure_storage dan path_provider_foundation
+        # belum menyediakan Package.swift. Lihat komentar di ios/Podfile.
+        script: cd ios && pod install
+
+      - name: Bangun .app tanpa tanda tangan
+        script: |
+          flutter build ios --release --no-codesign \
+            --dart-define=API_BASE_URL="$API_BASE_URL" \
+            --dart-define=ENABLE_NETWORK_LOG=false
+
+      - name: Bungkus .app menjadi .ipa
+        # `flutter build ipa --no-codesign` TIDAK menghasilkan .ipa sama
+        # sekali. Begitu penandatanganan dimatikan, flutter_tools berhenti
+        # sesudah membuat .xcarchive:
+        #
+        #   "Codesigning disabled with --no-codesign, skipping IPA."
+        #   (flutter_tools/lib/src/commands/build_ios.dart)
+        #
+        # Kegagalannya diam — build tetap hijau, hanya artifact-nya kosong.
+        # Karena itu paketnya dirakit sendiri di sini. Sebuah .ipa memang
+        # hanya zip berisi satu folder bernama Payload/.
+        script: |
+          cd build/ios/iphoneos
+          mkdir -p Payload
+          mv Runner.app Payload/
+          zip -r "$CM_BUILD_DIR/JejakCahaya-unsigned.ipa" Payload
+
+    artifacts:
+      - JejakCahaya-unsigned.ipa

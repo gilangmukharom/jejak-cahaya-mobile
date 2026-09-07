@@ -5,10 +5,14 @@
 	<!-- ══ Izin Jejak Cahaya ═══════════════════════════════════════════
 	     iOS menampilkan teks di bawah ini apa adanya pada dialog izin, dan
 	     App Review menolak aplikasi yang alasannya generik. Karena itu tiap
-	     teks menyebutkan secara spesifik untuk apa izinnya dipakai. -->
+	     teks menyebutkan secara spesifik untuk apa izinnya dipakai.
+
+	     Lokasi hanya diminta sebagai "WhenInUse". LocationService tidak pernah
+	     meminta LocationPermission.always — geofence dievaluasi selagi layar
+	     terbuka, bukan di latar belakang — dan mencantumkan kunci "Always"
+	     yang tidak dipakai justru membuat App Review menanyakan pemakaian
+	     yang memang tidak ada. -->
 	<key>NSLocationWhenInUseUsageDescription</key>
-	<string>Jejak Cahaya memerlukan lokasi Anda untuk memastikan Anda berada di area masjid dan mendeteksi checkpoint tokoh di sekitar Anda.</string>
-	<key>NSLocationAlwaysAndWhenInUseUsageDescription</key>
 	<string>Jejak Cahaya memerlukan lokasi Anda untuk memastikan Anda berada di area masjid dan mendeteksi checkpoint tokoh di sekitar Anda.</string>
 	<key>NSCameraUsageDescription</key>
 	<string>Kamera digunakan untuk memindai QR Code di setiap checkpoint agar tokoh Islam dapat ditemukan.</string>
@@ -66,18 +70,40 @@
 	<string>LaunchScreen</string>
 	<key>UIMainStoryboardFile</key>
 	<string>Main</string>
+	<!-- Potret saja, sama dengan SystemChrome.setPreferredOrientations di
+	     main.dart. Daftar di sini berlaku lebih dulu daripada Dart: selama
+	     lanskap masih tercantum, layar peluncuran sempat berputar mengikuti
+	     perangkat lalu tersentak kembali ke potret begitu Flutter dimuat. -->
 	<key>UISupportedInterfaceOrientations</key>
 	<array>
 		<string>UIInterfaceOrientationPortrait</string>
-		<string>UIInterfaceOrientationLandscapeLeft</string>
-		<string>UIInterfaceOrientationLandscapeRight</string>
+		<string>UIInterfaceOrientationPortraitUpsideDown</string>
 	</array>
 	<key>UISupportedInterfaceOrientations~ipad</key>
 	<array>
 		<string>UIInterfaceOrientationPortrait</string>
 		<string>UIInterfaceOrientationPortraitUpsideDown</string>
-		<string>UIInterfaceOrientationLandscapeLeft</string>
-		<string>UIInterfaceOrientationLandscapeRight</string>
 	</array>
+	<!-- ══ Backend HTTP saat pengembangan ═════════════════════════════
+	     App Transport Security memblokir seluruh cleartext HTTP, sehingga
+	     API_BASE_URL yang menunjuk `http://localhost:3000` di Simulator atau
+	     IP LAN di perangkat fisik gagal tanpa pesan yang jelas — padanan iOS
+	     dari `usesCleartextTraffic` di Android.
+
+	     NSAllowsLocalNetworking, bukan NSAllowsArbitraryLoads: yang pertama
+	     hanya membuka nama host tanpa domain, alamat .local, dan rentang IP
+	     privat. Build produksi menunjuk HTTPS dan tidak terpengaruh sama
+	     sekali, dan Apple menerimanya tanpa perlu justifikasi. -->
+	<key>NSAppTransportSecurity</key>
+	<dict>
+		<key>NSAllowsLocalNetworking</key>
+		<true/>
+	</dict>
+
+	<!-- Aplikasi ini tidak memuat kriptografi selain HTTPS bawaan sistem.
+	     Tanpa baris ini App Store Connect menanyakan kepatuhan ekspor pada
+	     setiap unggahan TestFlight, dan build tertahan sampai dijawab. -->
+	<key>ITSAppUsesNonExemptEncryption</key>
+	<false/>
 </dict>
 </plist>

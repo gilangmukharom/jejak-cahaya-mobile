@@ -32,6 +32,13 @@ tertanam saat build: build produksi tidak mungkin diam-diam menunjuk API lokal.
 > Untuk perangkat fisik dengan backend HTTP (bukan HTTPS), Android 9+ memblokir
 > cleartext secara bawaan. Tambahkan `android:usesCleartextTraffic="true"` pada
 > `<application>` di `AndroidManifest.xml` **hanya untuk build debug**.
+>
+> Di iOS penyumbatnya bernama App Transport Security, dan sudah dibuka
+> secukupnya: `NSAllowsLocalNetworking` di `ios/Runner/Info.plist` mengizinkan
+> HTTP hanya ke `localhost`, alamat `.local`, dan rentang IP privat — jadi
+> Simulator dan perangkat di LAN yang sama langsung jalan, sementara build
+> produksi yang menunjuk HTTPS tidak terpengaruh. Tidak ada yang perlu diubah
+> untuk debug, dan tidak ada yang perlu dikembalikan sebelum rilis.
 
 ### Perintah
 
@@ -42,6 +49,40 @@ dart format lib test     # format kode
 flutter build apk --release
 flutter build ipa
 ```
+
+### Membangun untuk iOS
+
+Butuh macOS dengan Xcode — `flutter build ipa` tidak bisa dijalankan dari
+Windows atau Linux, dan tidak ada jalan pintas untuk itu.
+
+```bash
+flutter pub get
+cd ios && pod install && cd ..     # sekali, dan setiap kali pubspec berubah
+flutter build ipa --dart-define=API_BASE_URL=https://api.jejak-cahaya.com/api/v1
+```
+
+`pod install` tetap diperlukan meskipun proyek Xcode-nya sudah memakai Swift
+Package Manager: `flutter_secure_storage` dan `path_provider_foundation` belum
+menyediakan `Package.swift`, jadi keduanya hanya bisa masuk lewat CocoaPods.
+Keduanya hidup berdampingan dalam satu build — lihat komentar di `ios/Podfile`.
+
+Sebelum build pertama, buka `ios/Runner.xcworkspace` (**bukan** `.xcodeproj` —
+target CocoaPods hanya ada di workspace) lalu isi *Signing & Capabilities* →
+*Team*. Bundle ID-nya `id.jejakcahaya.jejakCahaya`; huruf kapital di tengah
+bukan kekeliruan, melainkan konsekuensi iOS yang tidak menerima garis bawah
+pada bundle ID, sementara Android memakai `id.jejakcahaya.jejak_cahaya`.
+
+| Berkas                                   | Berisi                                                        |
+| ---------------------------------------- | ------------------------------------------------------------- |
+| `ios/Podfile`                            | Versi iOS minimum (13.0) dan pod untuk plugin non-SPM          |
+| `ios/Runner/Info.plist`                  | Teks izin, orientasi potret, ATS, pernyataan kepatuhan ekspor  |
+| `ios/Runner/AppDelegate.swift`           | Delegate `UNUserNotificationCenter` — tanpanya pengingat sholat tidak tampil selagi aplikasi dibuka |
+| `ios/Runner/Base.lproj/LaunchScreen.storyboard` | Latar peluncuran `#06251C`, disamakan dengan Android    |
+
+iOS 13.0 adalah lantainya, ditentukan oleh `maplibre_gl`, `sensors_plus`, dan
+`flutter_local_notifications`. Angka itu ditulis di tiga tempat yang harus
+sejalan: `platform` di `Podfile`, `IPHONEOS_DEPLOYMENT_TARGET` di
+`Runner.xcodeproj`, dan paket SPM yang dibangkitkan Flutter.
 
 ---
 
@@ -246,6 +287,10 @@ dan dari halaman Profil.
 | Sensor magnet           | Kompas kiblat. Tidak diwajibkan — tanpa magnetometer, sudutnya tetap ditampilkan sebagai angka |
 
 Sudah dikonfigurasi di `AndroidManifest.xml` dan `ios/Runner/Info.plist`.
+Dua baris terakhir tabel adalah izin khusus Android; di iOS penjadwalan alarm
+presisi sudah tercakup oleh izin notifikasi, dan jadwalnya bertahan melewati
+restart tanpa izin tambahan. Sebaliknya `NSMotionUsageDescription` hanya ada di
+iOS — Android tidak meminta izin apa pun untuk membaca magnetometer.
 Lokasi presisi (`ACCESS_FINE_LOCATION`) diperlukan karena radius checkpoint
 hanya ±25 m — akurasi kasar meleset terlalu jauh untuk itu.
 

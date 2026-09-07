@@ -1,0 +1,74 @@
+# ══ CocoaPods ═════════════════════════════════════════════════════════
+#
+# Proyek Xcode-nya sudah memakai Swift Package Manager: berkas
+# `Flutter/ephemeral/Packages/FlutterGeneratedPluginSwiftPackage` yang
+# dirujuk Runner.xcodeproj menampung sebagian besar plugin. Tetapi tidak
+# semuanya — `flutter_secure_storage` dan `path_provider_foundation` belum
+# menyediakan Package.swift, jadi keduanya hanya bisa masuk lewat CocoaPods.
+#
+# Karena itu berkas ini ada dan ikut ke repo. Tanpanya `flutter build ios`
+# memang tetap membuatkan Podfile bawaan sendiri, tetapi Podfile bawaan itu
+# meninggalkan `platform` dalam keadaan dikomentari — dan justru baris itulah
+# yang menentukan seluruh isi berkas ini.
+
+# ── Versi iOS minimum ─────────────────────────────────────────────────
+#
+# 13.0, bukan angka yang lebih rendah, karena tiga plugin menuntutnya:
+# maplibre_gl (peta 3D), sensors_plus (kompas kiblat), dan
+# flutter_local_notifications (pengingat waktu sholat). Paket SPM yang
+# dibangkitkan Flutter juga mendeklarasikan `.iOS("13.0")`; menurunkan angka
+# di sini hanya akan membuat keduanya bertengkar saat menaut.
+#
+# Harus sama dengan IPHONEOS_DEPLOYMENT_TARGET di Runner.xcodeproj.
+platform :ios, '13.0'
+
+# CocoaPods mengirim statistik pemakaian secara sinkron — build menunggu
+# permintaan jaringan itu selesai sebelum lanjut.
+ENV['COCOAPODS_DISABLE_STATS'] = 'true'
+
+project 'Runner', {
+  'Debug' => :debug,
+  'Profile' => :release,
+  'Release' => :release,
+}
+
+def flutter_root
+  generated_xcode_build_settings_path = File.expand_path(File.join('..', 'Flutter', 'Generated.xcconfig'), __FILE__)
+  unless File.exist?(generated_xcode_build_settings_path)
+    raise "#{generated_xcode_build_settings_path} must exist. If you're running pod install manually, make sure flutter pub get is executed first"
+  end
+
+  File.foreach(generated_xcode_build_settings_path) do |line|
+    matches = line.match(/FLUTTER_ROOT\=(.*)/)
+    return matches[1].strip if matches
+  end
+  raise "FLUTTER_ROOT not found in #{generated_xcode_build_settings_path}. Try deleting Generated.xcconfig, then run flutter pub get"
+end
+
+require File.expand_path(File.join('packages', 'flutter_tools', 'bin', 'podhelper'), flutter_root)
+
+flutter_ios_podfile_setup
+
+target 'Runner' do
+  use_frameworks!
+
+  flutter_install_all_ios_pods File.dirname(File.realpath(__FILE__))
+  target 'RunnerTests' do
+    inherit! :search_paths
+  end
+end
+
+post_install do |installer|
+  installer.pods_project.targets.each do |target|
+    flutter_additional_ios_build_settings(target)
+
+    target.build_configurations.each do |config|
+      # Sebagian pod masih menuliskan target 9.0 atau 11.0 di podspec-nya
+      # sendiri. Xcode 15 ke atas memperlakukan itu sebagai peringatan yang
+      # mematikan build, dan pesannya menyebut nama pod — bukan penyebabnya.
+      # Menyamakan seluruhnya ke angka yang sama dengan aplikasi menutup
+      # kemungkinan itu sekali untuk semua.
+      config.build_settings['IPHONEOS_DEPLOYMENT_TARGET'] = '13.0'
+    end
+  end
+end
