@@ -26,17 +26,25 @@ workflows:
     max_build_duration: 45
 
     environment:
-      # `stable` dipakai supaya build pertama tidak gagal hanya karena versi
-      # yang diminta tidak tersedia di Codemagic. Bila suatu saat build mulai
-      # rusak sendiri padahal kode tidak berubah, sematkan versinya agar sama
-      # dengan yang di laptop — ganti baris ini menjadi:
+      # Disematkan, BUKAN `stable`. Ini bukan kehati-hatian teoretis —
+      # `stable` sudah pernah menggagalkan build ini:
       #
-      #   flutter: 3.44.4
+      #   [!] CocoaPods could not find compatible versions for pod "Flutter"
+      #       ...they required a higher minimum deployment target.
       #
-      # Menyematkan versi penting justru karena Anda tidak punya Mac: kalau
-      # `stable` bergerak dan build patah, kerusakannya tidak bisa
-      # direproduksi di mana pun untuk ditelusuri.
-      flutter: stable
+      # Flutter menaikkan minimum iOS dari 13 ke 15 (flutter#187741, demi
+      # Xcode 27), sementara ios/Podfile dan Runner.xcodeproj masih menyatakan
+      # 13.0 — angka yang benar untuk SDK 3.44.4 di laptop, dan bisa dibaca
+      # sendiri di podhelper.rb baris 236 milik SDK itu.
+      #
+      # Menyematkan versi bukan sekadar demi reproduktifitas: ia menjaga agar
+      # iOS minimum aplikasi tetap keputusan yang diambil sadar, bukan berubah
+      # sendiri karena SDK di awan bergerak pada hari build dijalankan. Naikkan
+      # angka ini hanya berbarengan dengan menaikkan SDK di laptop.
+      #
+      # Bila Codemagic menolak dengan "Flutter version not found", pakai versi
+      # terdekat yang ia punya pada seri 3.44.
+      flutter: 3.44.4
       xcode: latest
       cocoapods: default
 
@@ -103,6 +111,14 @@ workflows:
         # ini dipisahkan supaya kegagalan CocoaPods muncul sebagai langkah
         # yang gagal dengan namanya sendiri, bukan terkubur di tengah log
         # Xcode yang panjang.
+        #
+        # Konsekuensinya perlu disadari: menjalankannya lebih dulu melewati
+        # migrator bawaan `flutter build`, yang biasanya menaikkan sendiri
+        # angka deployment target di Podfile dan pbxproj bila SDK menuntut
+        # yang lebih tinggi. Selama versi Flutter di atas disematkan sama
+        # dengan yang di laptop, migrasi itu memang tidak diperlukan — tetapi
+        # begitu versinya dinaikkan, Podfile dan Runner.xcodeproj harus
+        # dinaikkan bersamaan, bukan diserahkan ke migrator.
         #
         # Pod tetap diperlukan meski proyek Xcode-nya sudah memakai Swift
         # Package Manager: flutter_secure_storage dan path_provider_foundation
