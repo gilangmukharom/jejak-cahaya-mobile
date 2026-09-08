@@ -1,0 +1,180 @@
+# ══ Build iOS dari Windows, lewat GitHub Actions ═════════════════════
+#
+# Sejajar dengan `codemagic.yaml` dan menghasilkan hal yang sama persis:
+# satu `JejakCahaya-unsigned.ipa` tanpa tanda tangan, yang ditandatangani
+# lokal memakai Sideloadly atau AltStore dengan Apple ID gratis.
+#
+# Mengapa ada dua. Repo ini publik, dan GitHub memberi menit runner macOS
+# tanpa batas untuk repo publik — sementara paket gratis Codemagic dibatasi
+# 500 menit sebulan dan mengantre di belakang pelanggan berbayar. Selama
+# repo ini tetap publik, jalur inilah yang lebih cepat dimulai. Codemagic
+# dipertahankan sebagai cadangan: bila repo suatu saat dijadikan privat,
+# runner macOS GitHub berubah menjadi pengali 10× terhadap kuota (2.000
+# menit sebulan menjadi hanya 200 menit macOS), dan Codemagic kembali
+# menjadi pilihan yang lebih longgar.
+#
+# Menandatangani di sini disengaja TIDAK dilakukan: itu menuntut
+# keanggotaan Apple Developer Program berbayar.
+
+name: iOS unsigned build
+
+on:
+  # Jalur utama. Input di bawah menghapus satu langkah yang di Codemagic
+  # menuntut sunting berkas lalu push hanya untuk mengarahkan aplikasi ke
+  # backend yang berbeda.
+  workflow_dispatch:
+    inputs:
+      api_base_url:
+        description: 'Alamat backend yang ditanam ke aplikasi'
+        required: true
+        default: 'https://api.jejak-cahaya.com/api/v1'
+        type: string
+
+  # Otomatis hanya untuk perubahan yang benar-benar mengubah isi .ipa.
+  # Menyunting README atau berkas backend tidak menghasilkan aplikasi yang
+  # berbeda, jadi tidak ada gunanya membangun ulang karenanya.
+  push:
+    branches: [master]
+    paths:
+      - 'lib/**'
+      - 'ios/**'
+      - 'assets/**'
+      - 'pubspec.yaml'
+      - 'pubspec.lock'
+      - '.github/workflows/ios-unsigned.yml'
+
+# Beberapa push beruntun hanya menyisakan build yang terakhir. Tanpa ini,
+# mendorong tiga perbaikan kecil berturut-turut mengantrekan tiga build
+# 15 menit, dan dua di antaranya sudah usang sebelum sempat selesai.
+concurrency:
+  group: ios-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  # ── Analisis & uji ────────────────────────────────────────────────
+  #
+  # Berjalan BERBARENGAN dengan build, bukan sebelumnya.
+  #
+  # Codemagic sengaja menaruhnya lebih dulu untuk menghemat kuota macOS
+  # yang mahal. Di sini menit macOS gratis, sehingga yang layak dihemat
+  # justru waktu tunggu — dan menunggu dua menit analisis sebelum build
+  # 15 menit boleh dimulai adalah dua menit yang hilang percuma di setiap
+  # build yang lolos. Bila pengujiannya gagal, tanda merahnya tetap
+  # terlihat; yang perlu diputuskan hanyalah jangan memasang .ipa itu.
+  check:
+    name: Analisis & uji
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: subosito/flutter-action@v2
+        with:
+          flutter-version: '3.44.4'
+          channel: stable
+          cache: true
+
+      - name: Ambil paket
+        run: flutter pub get
+
+      - name: Analisis statis
+        run: flutter analyze
+
+      - name: Uji unit & widget
+        run: flutter test
+
+  # ── Bangun .ipa ───────────────────────────────────────────────────
+  build-ios:
+    name: Bangun .ipa
+    runs-on: macos-latest
+    timeout-minutes: 45
+
+    steps:
+      - uses: actions/checkout@v4
+
+      # Disematkan, BUKAN `stable`. Ini bukan kehati-hatian teoretis —
+      # `stable` sudah pernah menggagalkan build ini:
+      #
+      #   [!] CocoaPods could not find compatible versions for pod "Flutter"
+      #       ...they required a higher minimum deployment target.
+      #
+      # Flutter menaikkan minimum iOS dari 13 ke 15, sementara ios/Podfile
+      # dan Runner.xcodeproj masih menyatakan 13.0 — angka yang benar untuk
+      # SDK 3.44.4. Naikkan versi ini hanya berbarengan dengan menaikkan
+      # keduanya, bukan sendirian.
+      - uses: subosito/flutter-action@v2
+        with:
+          flutter-version: '3.44.4'
+          channel: stable
+          cache: true
+
+      # Unduhan CocoaPods, bukan folder Pods-nya.
+      #
+      # `ios/Pods` sengaja tidak ikut: folder itu harus selalu dirakit ulang
+      # dari Podfile.lock. Pods basi yang tertinggal setelah dependensi
+      # berubah menghasilkan galat penautan yang menyesatkan — menyebut nama
+      # pod, bukan menyebut bahwa isinya kedaluwarsa. Yang di-cache hanya
+      # unduhannya, dan itulah bagian yang lambat: MapLibre 6.19.1 sendirian
+      # memakan 3–5 menit bila diambil dari nol.
+      - name: Cache unduhan CocoaPods
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/Library/Caches/CocoaPods
+            ~/.cocoapods/repos
+          key: pods-${{ runner.os }}-${{ hashFiles('ios/Podfile.lock') }}
+          restore-keys: pods-${{ runner.os }}-
+
+      - name: Ambil paket Flutter
+        run: flutter pub get
+
+      # Dipisahkan dari `flutter build`, yang sebenarnya memanggil
+      # `pod install` sendiri. Tujuannya semata agar kegagalan CocoaPods
+      # muncul sebagai langkah gagal dengan namanya sendiri, bukan terkubur
+      # di tengah log Xcode sepanjang ribuan baris.
+      #
+      # Pod tetap diperlukan meski proyek Xcode-nya sudah memakai Swift
+      # Package Manager: flutter_secure_storage dan path_provider_foundation
+      # belum menyediakan Package.swift.
+      - name: Pasang pod
+        run: cd ios && pod install
+
+      # Alamat backend tertanam saat kompilasi, bukan dibaca saat aplikasi
+      # berjalan — lihat lib/core/config/app_config.dart. Nilainya dicetak
+      # supaya .ipa yang sudah diunduh masih bisa ditelusuri menembak ke
+      # mana, tanpa perlu membongkar paketnya.
+      - name: Bangun .app tanpa tanda tangan
+        env:
+          API_BASE_URL: ${{ inputs.api_base_url || 'https://api.jejak-cahaya.com/api/v1' }}
+        run: |
+          echo "Backend yang ditanam: $API_BASE_URL"
+          flutter build ios --release --no-codesign \
+            --dart-define=API_BASE_URL="$API_BASE_URL" \
+            --dart-define=ENABLE_NETWORK_LOG=false
+
+      # `flutter build ipa --no-codesign` TIDAK menghasilkan .ipa sama
+      # sekali. Begitu penandatanganan dimatikan, flutter_tools berhenti
+      # sesudah membuat .xcarchive:
+      #
+      #   "Codesigning disabled with --no-codesign, skipping IPA."
+      #   (flutter_tools/lib/src/commands/build_ios.dart)
+      #
+      # Kegagalannya diam — build tetap hijau, hanya artifact-nya kosong.
+      # Karena itu paketnya dirakit sendiri di sini. Sebuah .ipa memang
+      # hanya zip berisi satu folder bernama Payload/.
+      - name: Bungkus .app menjadi .ipa
+        run: |
+          cd build/ios/iphoneos
+          mkdir -p Payload
+          mv Runner.app Payload/
+          zip -qr "$GITHUB_WORKSPACE/JejakCahaya-unsigned.ipa" Payload
+          ls -lh "$GITHUB_WORKSPACE/JejakCahaya-unsigned.ipa"
+
+      - name: Unggah .ipa
+        uses: actions/upload-artifact@v4
+        with:
+          name: JejakCahaya-unsigned-${{ github.run_number }}
+          path: JejakCahaya-unsigned.ipa
+          # Cukup lama untuk memasang ulang tanpa membangun ulang ketika
+          # tanda tangan Apple ID gratis kedaluwarsa setiap 7 hari.
+          retention-days: 30
+          if-no-files-found: error
