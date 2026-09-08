@@ -27,10 +27,58 @@ class GameRepository {
 
   // ── Masjid & geofence ─────────────────────────────────────────
 
-  Future<List<Mosque>> fetchMosques() => FailureMapper.guard(
+  /// Seluruh lokasi yang bisa dimainkan.
+  ///
+  /// Bila [position] dikirim, tiap lokasi dilengkapi jarak dan status
+  /// di-dalam/di-luar area, dan daftarnya datang **terurut dari yang
+  /// terdekat** — urutan yang berguna bagi pemain yang sedang berdiri di suatu
+  /// tempat dan ingin tahu ke mana ia bisa pergi.
+  ///
+  /// Ketika permintaan membawa token, tiap lokasi juga membawa kemajuan pemain
+  /// di lokasi itu saja, sehingga layar daftar lokasi cukup satu panggilan.
+  Future<List<Mosque>> fetchMosques({PlayerPosition? position}) =>
+      FailureMapper.guard(
         () => _api.get(
           ApiEndpoints.mosques,
+          queryParameters: {
+            if (position != null) ...{
+              'latitude': position.latitude,
+              'longitude': position.longitude,
+            },
+          },
           parser: (data) => Json.list(data, Mosque.fromJson),
+        ),
+      );
+
+  /// Lokasi terdekat dari posisi pemain.
+  ///
+  /// Null bila belum ada masjid sama sekali. Jarak dan status area ikut
+  /// terisi, jadi jawabannya cukup untuk langsung membuka lokasi yang benar.
+  Future<Mosque?> fetchNearestMosque(PlayerPosition position) =>
+      FailureMapper.guard(
+        () => _api.get(
+          ApiEndpoints.nearestMosque,
+          queryParameters: {
+            'latitude': position.latitude,
+            'longitude': position.longitude,
+          },
+          parser: (data) =>
+              data is Map<String, dynamic> ? Mosque.fromJson(data) : null,
+        ),
+      );
+
+  /// Detail satu lokasi, lengkap dengan kemajuan pemain di sana.
+  Future<Mosque> fetchMosque(String id, {PlayerPosition? position}) =>
+      FailureMapper.guard(
+        () => _api.get(
+          ApiEndpoints.mosque(id),
+          queryParameters: {
+            if (position != null) ...{
+              'latitude': position.latitude,
+              'longitude': position.longitude,
+            },
+          },
+          parser: (data) => Mosque.fromJson(Json.map(data)),
         ),
       );
 

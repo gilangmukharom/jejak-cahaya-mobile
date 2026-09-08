@@ -94,6 +94,17 @@ class _ProfileView extends StatelessWidget {
                   onTap: () => context.push(AppRoutes.missions),
                 ),
                 const SizedBox(height: 10),
+
+                // Ditempatkan tepat setelah Misi karena keduanya menjawab
+                // pertanyaan yang bersambung: apa yang tersisa untuk saya
+                // kerjakan, dan di mana saja saya bisa mengerjakannya.
+                _MenuTile(
+                  icon: Icons.travel_explore_rounded,
+                  title: 'Lokasi Penjelajahan',
+                  subtitle: 'Masjid yang bisa dimainkan & kemajuan di tiap lokasi',
+                  onTap: () => context.push(AppRoutes.locations),
+                ),
+                const SizedBox(height: 10),
                 _MenuTile(
                   icon: Icons.military_tech_rounded,
                   title: 'Pencapaian',

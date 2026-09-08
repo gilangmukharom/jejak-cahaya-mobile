@@ -57,11 +57,28 @@ class CoverageNotice extends StatelessWidget {
         Center(
           child: SingleChildScrollView(
             padding: const EdgeInsets.fromLTRB(20, 20, 20, 20),
-            child: _NoticeCard(
-              nearest: nearest,
-              isChecking: state.stage == GeofenceStage.locating,
-              onRecheck: onRecheck,
-              onShowMosque: onShowMosque,
+            // Kartu naik dan membesar sedikit saat muncul. Lapisan ini
+            // menggantikan peta secara tiba-tiba ketika pemain melangkah
+            // keluar area; tanpa gerakan, pergantiannya terbaca seperti
+            // aplikasi yang tersendat, bukan seperti sesuatu yang menutup.
+            child: TweenAnimationBuilder<double>(
+              tween: Tween<double>(begin: 0, end: 1),
+              duration: const Duration(milliseconds: 380),
+              curve: Curves.easeOutCubic,
+              builder: (context, t, child) => Opacity(
+                opacity: t,
+                child: Transform.translate(
+                  offset: Offset(0, 18 * (1 - t)),
+                  child: Transform.scale(scale: 0.96 + 0.04 * t, child: child),
+                ),
+              ),
+              child: _NoticeCard(
+                nearest: nearest,
+                locationCount: state.mosques.length,
+                isChecking: state.stage == GeofenceStage.locating,
+                onRecheck: onRecheck,
+                onShowMosque: onShowMosque,
+              ),
             ),
           ),
         ),
@@ -73,12 +90,21 @@ class CoverageNotice extends StatelessWidget {
 class _NoticeCard extends StatelessWidget {
   const _NoticeCard({
     required this.nearest,
+    required this.locationCount,
     required this.isChecking,
     required this.onRecheck,
     this.onShowMosque,
   });
 
   final NearestMosque? nearest;
+
+  /// Berapa lokasi yang tersedia seluruhnya.
+  ///
+  /// Menentukan apakah pintu ke daftar lokasi ditawarkan sama sekali: dengan
+  /// satu lokasi, "lihat semua lokasi" hanya membawa pemain ke daftar berisi
+  /// masjid yang sudah disebut namanya di kartu ini.
+  final int locationCount;
+
   final bool isChecking;
   final Future<void> Function() onRecheck;
   final VoidCallback? onShowMosque;
@@ -170,6 +196,17 @@ class _NoticeCard extends StatelessWidget {
               ),
             ],
           ),
+          if (locationCount > 1) ...[
+            const SizedBox(height: 8),
+            SizedBox(
+              width: double.infinity,
+              child: TextButton.icon(
+                onPressed: () => context.push(AppRoutes.locations),
+                icon: const Icon(Icons.travel_explore_rounded, size: 18),
+                label: Text('Lihat $locationCount lokasi lainnya'),
+              ),
+            ),
+          ],
           const SizedBox(height: 10),
           Text(
             'Lokasi diperiksa otomatis — peta terbuka sendiri saat Anda tiba.',
@@ -238,11 +275,20 @@ class _NearestMosqueTile extends StatelessWidget {
             crossAxisAlignment: CrossAxisAlignment.baseline,
             textBaseline: TextBaseline.alphabetic,
             children: [
-              Text(
-                formatDistance(remaining),
-                style: theme.textTheme.headlineMedium?.copyWith(
-                  color: AppColors.primary,
-                  fontWeight: FontWeight.w900,
+              // Jarak dihitung ulang pada setiap pembaruan GPS, jadi angkanya
+              // memang bergerak sementara pemain berjalan. Dianimasikan supaya
+              // ia terlihat merapat, bukan melompat — satu-satunya umpan balik
+              // yang memberi tahu bahwa berjalan ke arah ini memang benar.
+              TweenAnimationBuilder<double>(
+                tween: Tween<double>(begin: remaining, end: remaining),
+                duration: const Duration(milliseconds: 600),
+                curve: Curves.easeOut,
+                builder: (context, value, _) => Text(
+                  formatDistance(value),
+                  style: theme.textTheme.headlineMedium?.copyWith(
+                    color: AppColors.primary,
+                    fontWeight: FontWeight.w900,
+                  ),
                 ),
               ),
               const SizedBox(width: 8),

@@ -163,7 +163,7 @@ class _ExploreViewState extends State<_ExploreView> {
                     // tanpa ini.
                     const Positioned.fill(child: _MapScrim()),
 
-                    _TopHud(state: state),
+                    _TopHud(state: state, geofence: geofence),
 
                     _MapControls(
                       bottom: reservedBottom + _sheetPeekHeight + 76,
@@ -259,9 +259,10 @@ class _MapScrim extends StatelessWidget {
 /// Sejak tab Misi digantikan Ibadah, bilah ini juga menjadi pintu masuk ke
 /// daftar misi: mengetuknya membuka halaman yang dulu ada di bilah bawah.
 class _TopHud extends StatelessWidget {
-  const _TopHud({required this.state});
+  const _TopHud({required this.state, required this.geofence});
 
   final ExploreState state;
+  final GeofenceState geofence;
 
   @override
   Widget build(BuildContext context) {
@@ -275,6 +276,14 @@ class _TopHud extends StatelessWidget {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
+            // Nama lokasi berada di atas bilah misi, bukan di dalamnya.
+            // Permainan berjalan di banyak masjid sekarang, dan bilah misi
+            // menjawab pertanyaan yang berbeda — "apa yang sedang saya
+            // kerjakan", bukan "saya sedang di mana".
+            if (geofence.mosque != null) ...[
+              _LocationChip(geofence: geofence),
+              const SizedBox(height: 8),
+            ],
             _FloatingSurface(
               padding: EdgeInsets.zero,
               child: InkWell(
@@ -334,6 +343,81 @@ class _TopHud extends StatelessWidget {
               _OfflineBanner(message: state.failure!.message),
             ],
           ],
+        ),
+      ),
+    );
+  }
+}
+
+/// Lokasi yang sedang dibuka, sekaligus pintu ke daftar lokasi.
+///
+/// Muncul di setiap layar peta, bukan hanya saat ada beberapa lokasi. Nama
+/// masjid adalah konteks bagi seluruh isi layar di bawahnya — checkpoint,
+/// misi, dan jarak semuanya milik satu tempat — dan menyembunyikannya ketika
+/// kebetulan baru ada satu lokasi berarti pemain harus belajar dua tata letak
+/// yang berbeda begitu lokasi kedua ditambahkan.
+class _LocationChip extends StatelessWidget {
+  const _LocationChip({required this.geofence});
+
+  final GeofenceState geofence;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final mosque = geofence.mosque;
+    if (mosque == null) return const SizedBox.shrink();
+
+    // Pemain sedang melihat lokasi yang ia pilih sendiri, bukan yang terdekat.
+    // Perlu dikatakan: tanpa itu, layar yang menyatakan "di luar area" terbaca
+    // seolah GPS-nya keliru, padahal ia memang sedang menengok masjid lain.
+    final isPinned = geofence.isPinned;
+
+    return _FloatingSurface(
+      padding: EdgeInsets.zero,
+      child: InkWell(
+        onTap: () => context.push(AppRoutes.locations),
+        borderRadius: BorderRadius.circular(16),
+        child: Padding(
+          padding: const EdgeInsets.fromLTRB(14, 9, 12, 9),
+          child: Row(
+            children: [
+              Icon(
+                isPinned ? Icons.push_pin_rounded : Icons.mosque_rounded,
+                size: 17,
+                color: isPinned ? AppColors.goldDark : AppColors.primary,
+              ),
+              const SizedBox(width: 9),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Text(
+                      mosque.name,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: theme.textTheme.bodyMedium
+                          ?.copyWith(fontWeight: FontWeight.w800),
+                    ),
+                    Text(
+                      isPinned
+                          ? 'Lokasi pilihan Anda · ketuk untuk ganti'
+                          : 'Lokasi terdekat · ketuk untuk lihat semua',
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: theme.textTheme.labelSmall?.copyWith(
+                        color: isPinned
+                            ? AppColors.goldDark
+                            : AppColors.textMuted,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              const Icon(Icons.unfold_more_rounded,
+                  size: 18, color: AppColors.textMuted),
+            ],
+          ),
         ),
       ),
     );

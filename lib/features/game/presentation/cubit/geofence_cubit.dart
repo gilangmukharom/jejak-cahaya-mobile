@@ -59,6 +59,7 @@ class GeofenceState extends Equatable {
     this.position,
     this.mosques = const [],
     this.nearest,
+    this.pinnedMosqueId,
     this.failure,
   });
 
@@ -73,6 +74,14 @@ class GeofenceState extends Equatable {
   /// Masjid terdekat dari posisi pemain. Sama dengan [mosque] ketika pemain
   /// sedang berada di dalam area.
   final NearestMosque? nearest;
+
+  /// Lokasi yang dipilih sendiri oleh pemain dari daftar lokasi.
+  ///
+  /// Null berarti aplikasi memilihkan sendiri yang terdekat — perilaku bawaan,
+  /// dan yang benar bagi hampir semua orang. Pilihan manual berguna untuk
+  /// kebalikannya: melihat-lihat lokasi yang belum didatangi, memeriksa
+  /// misinya, dan memutuskan akan ke mana.
+  final String? pinnedMosqueId;
 
   final Failure? failure;
 
@@ -91,6 +100,11 @@ class GeofenceState extends Equatable {
   /// Sisa jarak menuju area masjid, dalam meter.
   double? get metersAway => status?.metersToEnter ?? nearest?.metersToEnter;
 
+  /// Apakah lokasi yang sedang dibuka berasal dari pilihan pemain, bukan dari
+  /// perhitungan terdekat. Dipakai peta untuk menawarkan "kembali ke terdekat".
+  bool get isPinned =>
+      pinnedMosqueId != null && pinnedMosqueId != nearest?.mosque.id;
+
   GeofenceState copyWith({
     GeofenceStage? stage,
     GeofenceStatus? status,
@@ -98,8 +112,10 @@ class GeofenceState extends Equatable {
     PlayerPosition? position,
     List<Mosque>? mosques,
     NearestMosque? nearest,
+    String? pinnedMosqueId,
     Failure? failure,
     bool clearFailure = false,
+    bool clearPinned = false,
   }) =>
       GeofenceState(
         stage: stage ?? this.stage,
@@ -108,12 +124,14 @@ class GeofenceState extends Equatable {
         position: position ?? this.position,
         mosques: mosques ?? this.mosques,
         nearest: nearest ?? this.nearest,
+        pinnedMosqueId:
+            clearPinned ? null : (pinnedMosqueId ?? this.pinnedMosqueId),
         failure: clearFailure ? null : (failure ?? this.failure),
       );
 
   @override
   List<Object?> get props =>
-      [stage, status, mosque, position, mosques, nearest, failure];
+      [stage, status, mosque, position, mosques, nearest, pinnedMosqueId, failure];
 }
 
 /// Menegakkan Layer 1 — tetapi hanya atas bagian aplikasi yang memang permainan.
@@ -174,7 +192,9 @@ class GeofenceCubit extends Cubit<GeofenceState> with SafeEmit<GeofenceState> {
     try {
       final mosques = state.mosques.isNotEmpty
           ? state.mosques
-          : await _repository.fetchMosques();
+          : await _repository.fetchMosques(
+              position: _location.lastKnown,
+            );
 
       if (mosques.isEmpty) {
         emit(
@@ -237,6 +257,59 @@ class GeofenceCubit extends Cubit<GeofenceState> with SafeEmit<GeofenceState> {
 
   Future<void> openLocationSettings() => _location.openSettings();
 
+  /// Membuka lokasi tertentu atas pilihan pemain, bukan hasil perhitungan.
+  ///
+  /// Pilihannya bertahan sampai dilepas atau sampai pemain benar-benar
+  /// melangkah masuk ke area masjid lain — lihat [_resolveTarget]. Berguna
+  /// untuk melihat-lihat lokasi yang belum didatangi: misi apa yang menunggu
+  /// di sana, berapa titik yang tersisa, seberapa jauh perjalanannya.
+  Future<void> selectMosque(String mosqueId) async {
+    if (state.mosques.every((mosque) => mosque.id != mosqueId)) return;
+
+    emit(state.copyWith(pinnedMosqueId: mosqueId));
+    await _preferences.setLastMosqueId(mosqueId);
+
+    final position = state.position ?? _location.lastKnown;
+    if (position == null) return;
+
+    // Melewati jeda otomatis: pemain baru saja mengetuk sesuatu, dan menunggu
+    // delapan detik sebelum layarnya berubah akan terbaca sebagai ketukan yang
+    // tidak tersampaikan.
+    _lastCheckedAt = null;
+    await _evaluate(position, preferredMosqueId: mosqueId);
+  }
+
+  /// Melepas pilihan manual dan kembali mengikuti lokasi terdekat.
+  Future<void> followNearest() async {
+    if (state.pinnedMosqueId == null) return;
+
+    emit(state.copyWith(clearPinned: true));
+
+    final position = state.position ?? _location.lastKnown;
+    if (position == null) return;
+
+    _lastCheckedAt = null;
+    await _evaluate(position);
+  }
+
+  /// Mengambil ulang daftar lokasi beserta kemajuan pemain di masing-masing.
+  ///
+  /// Dipanggil daftar lokasi saat disegarkan, dan setelah sebuah penemuan —
+  /// dua saat ketika angka kemajuannya memang berubah.
+  Future<void> refreshMosques() async {
+    try {
+      final mosques = await _repository.fetchMosques(
+        position: state.position ?? _location.lastKnown,
+      );
+      if (mosques.isEmpty) return;
+
+      emit(state.copyWith(mosques: mosques));
+    } on Object {
+      // Penyegaran latar belakang yang gagal tidak boleh mengubah apa pun;
+      // daftar terakhir tetap ditampilkan sampai percobaan berikutnya.
+    }
+  }
+
   Future<void> _startWatching() async {
     if (_positionSubscription != null) return;
 
@@ -284,6 +357,46 @@ class GeofenceCubit extends Cubit<GeofenceState> with SafeEmit<GeofenceState> {
     return closest;
   }
 
+  /// Menentukan lokasi mana yang diperiksa pada evaluasi ini.
+  ///
+  /// Urutan kewenangannya, dari yang paling kuat:
+  ///
+  ///  1. **Permintaan langsung** — pemain baru saja mengetuk sebuah lokasi.
+  ///  2. **Area yang benar-benar dimasuki.** Berdiri di dalam pelataran sebuah
+  ///     masjid adalah pernyataan yang lebih kuat daripada pilihan yang dibuat
+  ///     kemarin dari rumah, jadi pilihan manual dilepas begitu pemain masuk ke
+  ///     area masjid lain. Tanpa aturan ini, seseorang yang sempat menengok
+  ///     lokasi lain di daftar akan berdiri di masjid tujuannya sambil melihat
+  ///     layar yang menyatakan ia berada di luar area — masjid yang salah.
+  ///  3. **Pilihan manual** yang masih berlaku.
+  ///  4. **Yang terdekat**, lalu yang terakhir dibuka, lalu apa pun yang ada.
+  ///
+  /// Mengembalikan pasangan: id yang dipakai, dan apakah pilihan manual perlu
+  /// dilepas.
+  ({String id, bool releasePin}) _resolveTarget(
+    NearestMosque? nearest,
+    String? preferredMosqueId,
+  ) {
+    if (preferredMosqueId != null) {
+      return (id: preferredMosqueId, releasePin: false);
+    }
+
+    final pinned = state.pinnedMosqueId;
+    final steppedInto = nearest != null &&
+        nearest.distanceM <= nearest.mosque.radiusMeters &&
+        nearest.mosque.id != pinned;
+
+    if (pinned != null && !steppedInto) {
+      return (id: pinned, releasePin: false);
+    }
+
+    final fallback = nearest?.mosque.id ??
+        _preferences.lastMosqueId ??
+        state.mosques.first.id;
+
+    return (id: fallback, releasePin: pinned != null);
+  }
+
   Future<void> _evaluate(
     PlayerPosition position, {
     String? preferredMosqueId,
@@ -291,23 +404,15 @@ class GeofenceCubit extends Cubit<GeofenceState> with SafeEmit<GeofenceState> {
     _lastCheckedAt = DateTime.now();
 
     final nearest = _nearestTo(position);
-
-    // Masjid yang diperiksa adalah yang terdekat, bukan yang terakhir dibuka.
-    // Dengan begitu seseorang yang berpindah ke masjid lain langsung bermain di
-    // sana tanpa perlu memilih apa pun — dan kartu "di luar area" selalu
-    // menunjuk masjid yang benar-benar paling mungkin ia datangi.
-    final targetId = preferredMosqueId ??
-        nearest?.mosque.id ??
-        _preferences.lastMosqueId ??
-        state.mosques.first.id;
+    final target = _resolveTarget(nearest, preferredMosqueId);
 
     try {
       final status = await _repository.checkGeofence(
-        mosqueId: targetId,
+        mosqueId: target.id,
         position: position,
       );
 
-      if (status.isInside) await _preferences.setLastMosqueId(targetId);
+      if (status.isInside) await _preferences.setLastMosqueId(target.id);
 
       emit(
         state.copyWith(
@@ -316,6 +421,7 @@ class GeofenceCubit extends Cubit<GeofenceState> with SafeEmit<GeofenceState> {
           mosque: status.mosque,
           position: position,
           nearest: nearest,
+          clearPinned: target.releasePin,
           clearFailure: true,
         ),
       );

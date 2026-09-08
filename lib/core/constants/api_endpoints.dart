@@ -17,8 +17,13 @@ class ApiEndpoints {
   static const String myStats = '/users/me/stats';
   static const String myXpHistory = '/users/me/xp-history';
 
-  // Masjid
+  // Masjid / lokasi permainan
   static const String mosques = '/mosques';
+
+  /// Lokasi terdekat dari posisi pemain — dipakai untuk memilih sendiri
+  /// masjid mana yang dibuka, tanpa meminta pemain memilih apa pun.
+  static const String nearestMosque = '/mosques/nearest';
+
   static String mosque(String id) => '/mosques/$id';
   static String geofence(String id) => '/mosques/$id/geofence';
 

@@ -11,14 +11,27 @@ import '../../../../core/services/scan_result_holder.dart';
 import '../../../../core/storage/app_preferences.dart';
 import '../../../../core/widgets/app_widgets.dart';
 import '../../../game/data/game_repository.dart';
+import '../../../game/presentation/cubit/geofence_cubit.dart';
 import '../cubit/mission_cubit.dart';
 
+/// Misi pada lokasi yang sedang dibuka.
+///
+/// Misi selalu milik satu masjid, jadi layar ini selalu bicara tentang satu
+/// lokasi — dan sejak permainan berjalan di banyak masjid, lokasi itu harus
+/// disebut namanya. Sebelumnya halaman ini membaca masjid terakhir dari
+/// preferensi perangkat, yang bisa tertinggal beberapa lokasi di belakang
+/// masjid yang sedang benar-benar dibuka di peta.
 class MissionsPage extends StatelessWidget {
   const MissionsPage({super.key});
 
   @override
   Widget build(BuildContext context) {
-    final mosqueId = sl<AppPreferences>().lastMosqueId;
+    final geofence = sl<GeofenceCubit>();
+
+    // Preferensi dipakai hanya sebagai cadangan, ketika halaman dibuka sebelum
+    // pemeriksaan geofence pertama sempat menghasilkan jawaban.
+    final mosque = geofence.state.mosque;
+    final mosqueId = mosque?.id ?? sl<AppPreferences>().lastMosqueId;
 
     return BlocProvider<MissionCubit>(
       create: (_) {
@@ -27,25 +40,67 @@ class MissionsPage extends StatelessWidget {
         if (mosqueId != null) cubit.loadMissions(mosqueId);
         return cubit;
       },
-      child: _MissionsView(mosqueId: mosqueId),
+      child: _MissionsView(mosqueId: mosqueId, mosqueName: mosque?.name),
     );
   }
 }
 
 class _MissionsView extends StatelessWidget {
-  const _MissionsView({this.mosqueId});
+  const _MissionsView({this.mosqueId, this.mosqueName});
 
   final String? mosqueId;
+  final String? mosqueName;
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: const Text('Misi Eksplorasi')),
+      appBar: AppBar(
+        title: const Text('Misi Eksplorasi'),
+        actions: [
+          IconButton(
+            tooltip: 'Lokasi lain',
+            onPressed: () => context.push(AppRoutes.locations),
+            icon: const Icon(Icons.travel_explore_rounded),
+          ),
+        ],
+        bottom: mosqueName == null
+            ? null
+            : PreferredSize(
+                preferredSize: const Size.fromHeight(30),
+                child: Padding(
+                  padding: const EdgeInsets.fromLTRB(16, 0, 16, 10),
+                  child: Row(
+                    children: [
+                      const Icon(Icons.mosque_rounded,
+                          size: 15, color: AppColors.textMuted),
+                      const SizedBox(width: 6),
+                      Expanded(
+                        child: Text(
+                          mosqueName!,
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: Theme.of(context)
+                              .textTheme
+                              .labelMedium
+                              ?.copyWith(color: AppColors.textSecondary),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+      ),
       body: mosqueId == null
-          ? const EmptyView(
+          ? EmptyView(
               icon: Icons.mosque_outlined,
-              title: 'Masjid belum dipilih',
-              message: 'Kembali ke beranda untuk memilih lokasi penjelajahan.',
+              title: 'Lokasi belum dipilih',
+              message:
+                  'Pilih lokasi penjelajahan lebih dulu untuk melihat misinya.',
+              action: FilledButton.icon(
+                onPressed: () => context.push(AppRoutes.locations),
+                icon: const Icon(Icons.travel_explore_rounded, size: 18),
+                label: const Text('Lihat daftar lokasi'),
+              ),
             )
           : BlocBuilder<MissionCubit, MissionState>(
               builder: (context, state) {

@@ -28,6 +28,16 @@ class AppRoutes {
   static const String missions = '/missions';
   static const String profile = '/profile';
 
+  /// Daftar lokasi permainan, dan detail satu lokasi.
+  ///
+  /// Terpisah dari `/explore` karena keduanya menjawab pertanyaan berbeda:
+  /// peta menunjukkan titik-titik di lokasi yang sedang dibuka, sementara
+  /// layar ini menunjukkan lokasi mana saja yang ada dan sudah sejauh apa
+  /// pemain di masing-masing.
+  static const String locations = '/lokasi';
+  static String locationDetail(String id) => '/lokasi/$id';
+  static const String locationDetailPattern = '/lokasi/:id';
+
   static const String scanner = '/scan';
   static const String leaderboard = '/leaderboard';
   static const String achievements = '/achievements';

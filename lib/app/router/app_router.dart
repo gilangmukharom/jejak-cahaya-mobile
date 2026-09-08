@@ -16,6 +16,8 @@ import '../../features/game/presentation/pages/explore_page.dart';
 import '../../features/game/presentation/pages/geofence_gate_page.dart';
 import '../../features/game/presentation/pages/home_shell.dart';
 import '../../features/leaderboard/presentation/pages/leaderboard_page.dart';
+import '../../features/locations/presentation/pages/location_detail_page.dart';
+import '../../features/locations/presentation/pages/locations_page.dart';
 import '../../features/mission/presentation/pages/mission_detail_page.dart';
 import '../../features/mission/presentation/pages/missions_page.dart';
 import '../../features/profile/presentation/pages/achievements_page.dart';
@@ -119,6 +121,21 @@ class AppRouter {
       GoRoute(
         path: AppRoutes.missions,
         builder: (context, state) => const MissionsPage(),
+      ),
+
+      // Daftar lokasi berada di luar cangkang, dibuka lewat `push` dari peta
+      // dan dari profil. Ia bukan tab: pemain membukanya sesekali untuk memilih
+      // ke mana akan pergi, bukan berpindah-pindah ke sana sepanjang permainan
+      // — dan bilah bawah hanya cukup untuk yang benar-benar sering dibuka.
+      GoRoute(
+        path: AppRoutes.locations,
+        builder: (context, state) => const LocationsPage(),
+      ),
+      GoRoute(
+        path: AppRoutes.locationDetailPattern,
+        builder: (context, state) => LocationDetailPage(
+          mosqueId: state.pathParameters['id'] ?? '',
+        ),
       ),
 
       GoRoute(

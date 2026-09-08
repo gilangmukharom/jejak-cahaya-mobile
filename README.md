@@ -108,6 +108,7 @@ lib/
 └── features/
     ├── auth/                    # Masuk, daftar, sesi
     ├── game/                    # Geofence gate, peta, radar, hasil penemuan
+    ├── locations/               # Daftar lokasi & kemajuan pemain di tiap masjid
     ├── scanner/                 # Pemindai QR
     ├── collection/              # Galeri koleksi
     ├── mission/                 # Daftar & detail misi
@@ -200,6 +201,28 @@ Cubit-nya berumur sepanjang aplikasi dan didaftarkan di `core/di/injection.dart`
 bukan dibuat per layar: tiga layar bergantung pada jawabannya sekaligus —
 gerbang, peta, dan pemindai — dan satu instance per layar berarti tiga langganan
 GPS berjalan berbarengan serta tiga jawaban yang bisa berbeda.
+
+### Banyak lokasi, dipilih sendiri oleh aplikasi
+
+Permainan berjalan di beberapa masjid. Pemain tidak diminta memilih apa pun:
+`GeofenceCubit` menghitung masjid terdekat dari posisinya pada setiap pembaruan
+GPS, dan lokasi itulah yang dibuka. Berpindah masjid cukup dengan datang ke sana.
+
+Layar **Lokasi Penjelajahan** (`features/locations/`) menampilkan seluruh lokasi
+terurut dari yang terdekat, masing-masing dengan cincin progresnya sendiri —
+berapa titik ditemukan, berapa misi selesai, berapa XP diperoleh *di lokasi itu*.
+Dari sana sebuah lokasi bisa dipilih manual untuk dilihat isinya sebelum berangkat.
+
+Pilihan manual itu punya satu aturan yang menentukan: ia dilepas begitu pemain
+benar-benar melangkah masuk ke area masjid lain. Berdiri di dalam pelataran sebuah
+masjid adalah pernyataan yang lebih kuat daripada pilihan yang dibuat kemarin dari
+rumah — tanpa aturan itu, seseorang akan berdiri di masjid tujuannya sambil melihat
+layar yang menyatakan ia berada di luar area, milik masjid yang salah.
+
+Layar ini memakai ulang `GeofenceCubit`, bukan cubit sendiri. Cubit itu sudah
+memegang daftar masjid, posisi pemain, dan lokasi yang sedang dibuka; sumber kedua
+berarti dua layar bisa menjawab berbeda atas pertanyaan "saya sedang main di mana",
+dan yang salah selalu terlihat lebih meyakinkan karena ia yang paling baru digambar.
 
 ### Di luar area, yang terkunci hanya peta
 
