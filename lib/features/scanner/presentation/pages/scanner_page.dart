@@ -8,6 +8,7 @@ import 'package:mobile_scanner/mobile_scanner.dart';
 import '../../../../app/router/app_routes.dart';
 import '../../../../app/theme/app_colors.dart';
 import '../../../../core/di/injection.dart';
+import '../../../../core/error/failures.dart';
 import '../../../../core/services/location_service.dart';
 import '../../../../core/services/scan_result_holder.dart';
 import '../../../game/data/game_repository.dart';
@@ -362,6 +363,17 @@ class _RejectionSheet extends StatelessWidget {
     final theme = Theme.of(context);
     final failure = state.failure!;
 
+    // Tokoh yang sudah dimiliki tidak memberi XP lagi, tetapi berdiri di
+    // checkpoint-nya dan memindai QR tetap harus menghadirkan tokohnya — itu
+    // yang diharapkan pemain dari memindai. Server menyertakan id tokohnya
+    // pada penolakan ini, jadi AR-nya bisa dibuka langsung dari sini.
+    final details = failure.details;
+    final ownedCollectibleId = failure.code == ApiErrorCode.alreadyDiscovered &&
+            details != null &&
+            details['collectibleId'] is String
+        ? details['collectibleId'] as String
+        : null;
+
     return Align(
       alignment: Alignment.bottomCenter,
       child: Container(
@@ -403,6 +415,25 @@ class _RejectionSheet extends StatelessWidget {
                     ?.copyWith(color: AppColors.textSecondary),
               ),
               const SizedBox(height: 26),
+              if (ownedCollectibleId != null) ...[
+                SizedBox(
+                  width: double.infinity,
+                  child: ElevatedButton.icon(
+                    // pushReplacement: halaman pemindai dibuang dan kameranya
+                    // dilepas, sehingga ARCore bisa memakai kamera.
+                    onPressed: () => context.pushReplacement(
+                      AppRoutes.collectibleAr(ownedCollectibleId),
+                    ),
+                    icon: const Icon(Icons.view_in_ar_rounded, size: 20),
+                    label: const Text('Lihat dalam AR'),
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: AppColors.gold,
+                      foregroundColor: AppColors.primaryDark,
+                    ),
+                  ),
+                ),
+                const SizedBox(height: 12),
+              ],
               Row(
                 children: [
                   Expanded(

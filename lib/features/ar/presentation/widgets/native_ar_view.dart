@@ -14,6 +14,7 @@ import 'package:flutter/services.dart';
 class NativeArView extends StatefulWidget {
   const NativeArView({
     required this.modelPath,
+    this.animation,
     this.bottomInset = 0,
     this.onPlaced,
     this.onUnsupported,
@@ -26,6 +27,11 @@ class NativeArView extends StatefulWidget {
 
   /// Jalur berkas GLB di perangkat (bukan URL).
   final String modelPath;
+
+  /// Pilihan animasi dari panel admin (`Collectible.modelAnimation`); sisi
+  /// native yang menerjemahkannya, termasuk jatuh ke animasi pertama bila
+  /// namanya tidak ada di berkas.
+  final String? animation;
 
   /// Ruang di bawah yang tertutup UI Flutter, dalam logical pixel. Panduan
   /// "gerakkan ponsel" milik SceneView digeser ke atasnya.
@@ -91,6 +97,7 @@ class _NativeArViewState extends State<NativeArView> {
           creationParams: <String, Object?>{
             'modelLocation': Uri.file(widget.modelPath).toString(),
             'bottomInsetDp': widget.bottomInset,
+            'animation': widget.animation,
           },
           creationParamsCodec: const StandardMessageCodec(),
           onFocus: () => params.onFocusChanged(true),

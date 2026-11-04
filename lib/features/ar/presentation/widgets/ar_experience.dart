@@ -183,6 +183,7 @@ class _ArExperienceState extends State<ArExperience> {
         return NativeArView(
           key: ValueKey('ar-$path'),
           modelPath: path!,
+          animation: widget.collectible.modelAnimation,
           bottomInset: bottomChrome,
           onPlaced: () {
             unawaited(HapticFeedback.mediumImpact());
@@ -205,6 +206,7 @@ class _ArExperienceState extends State<ArExperience> {
             key: ValueKey('3d-$path'),
             modelPath: path!,
             alt: 'Model 3D ${widget.collectible.name}',
+            animation: widget.collectible.modelAnimation,
             onFailed: () => setState(() => _stage = _Stage.failed),
           ),
         );

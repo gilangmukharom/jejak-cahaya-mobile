@@ -5,6 +5,7 @@ import 'package:flutter/material.dart';
 import 'package:model_viewer_plus/model_viewer_plus.dart';
 
 import '../../../../app/theme/app_colors.dart';
+import '../../../../core/models/collectible.dart';
 
 /// Tokoh sebagai model 3D yang bisa diputar — cadangan bila AR tidak tersedia.
 ///
@@ -16,6 +17,7 @@ class Model3dView extends StatefulWidget {
   const Model3dView({
     required this.modelPath,
     required this.alt,
+    this.animation,
     this.onFailed,
     super.key,
   });
@@ -23,6 +25,9 @@ class Model3dView extends StatefulWidget {
   /// Jalur berkas GLB di perangkat.
   final String modelPath;
   final String alt;
+
+  /// `Collectible.modelAnimation`: null = animasi pertama, `@none` = diam.
+  final String? animation;
   final VoidCallback? onFailed;
 
   @override
@@ -65,9 +70,12 @@ class _Model3dViewState extends State<Model3dView> {
           loading: Loading.eager,
           cameraControls: true,
           disablePan: true,
-          // Animasi pertama pada berkas diputar otomatis. Namanya tidak disebut:
-          // model placeholder dan model per tokoh nanti belum tentu sama.
-          autoPlay: true,
+          // Tanpa nama, <model-viewer> memutar animasi pertama di berkas.
+          autoPlay: widget.animation != Collectible.animationNone,
+          animationName: widget.animation == null ||
+                  widget.animation == Collectible.animationNone
+              ? null
+              : widget.animation,
           shadowIntensity: 1,
           ar: false,
           debugLogging: kDebugMode,

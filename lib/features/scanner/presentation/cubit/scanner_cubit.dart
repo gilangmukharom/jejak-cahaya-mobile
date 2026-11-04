@@ -145,9 +145,9 @@ class ScannerCubit extends Cubit<ScannerState> with SafeEmit<ScannerState> {
           'Berjalanlah mendekat ke titik checkpoint, lalu pindai lagi.',
         ApiErrorCode.qrSignatureInvalid ||
         ApiErrorCode.qrInvalid =>
-          'Pastikan Anda memindai QR resmi Jejak Cahaya di lokasi checkpoint.',
+          'Pastikan Anda memindai QR resmi Nusaverse di lokasi checkpoint.',
         ApiErrorCode.mockLocationDetected =>
-          'Nonaktifkan aplikasi lokasi palsu, lalu buka ulang Jejak Cahaya.',
+          'Nonaktifkan aplikasi lokasi palsu, lalu buka ulang Nusaverse.',
         ApiErrorCode.poorGpsAccuracy =>
           'Keluar ke area terbuka agar sinyal GPS lebih kuat.',
         ApiErrorCode.alreadyDiscovered =>

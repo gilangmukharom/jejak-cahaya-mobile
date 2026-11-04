@@ -24,10 +24,10 @@ import io.flutter.plugin.common.StandardMessageCodec
 import io.flutter.plugin.platform.PlatformView
 import io.flutter.plugin.platform.PlatformViewFactory
 import io.github.sceneview.ar.ARCoreAvailability
-import io.github.sceneview.ar.AutoPlacementModel
+import io.github.sceneview.ar.AutoPlacementNode
 import io.github.sceneview.ar.AutoPlacementScene
-import io.github.sceneview.ar.PlacementSize
 import io.github.sceneview.ar.rememberAutoPlacementState
+import io.github.sceneview.math.Position
 import io.github.sceneview.model.ModelInstance
 import io.github.sceneview.model.model
 import io.github.sceneview.rememberEngine
@@ -44,6 +44,7 @@ class ArPlatformViewFactory(
             context = context,
             modelLocation = params["modelLocation"] as? String ?: "",
             bottomInsetDp = (params["bottomInsetDp"] as? Number)?.toFloat() ?: 0f,
+            animation = params["animation"] as? String,
             events = MethodChannel(messenger, "${ArPlatformView.VIEW_TYPE}/$viewId"),
         )
     }
@@ -65,6 +66,8 @@ class ArPlatformView(
     context: Context,
     private val modelLocation: String,
     private val bottomInsetDp: Float,
+    /** Pilihan animasi dari panel admin — lihat [resolveAnimation]. */
+    private val animation: String?,
     private val events: MethodChannel,
 ) : PlatformView {
 
@@ -86,6 +89,7 @@ class ArPlatformView(
             TokohArScene(
                 modelLocation = modelLocation,
                 bottomInsetDp = bottomInsetDp,
+                animation = animation,
                 onEvent = ::emit,
             )
         }
@@ -129,6 +133,7 @@ private sealed interface ModelLoad {
 private fun TokohArScene(
     modelLocation: String,
     bottomInsetDp: Float,
+    animation: String?,
     onEvent: (String, Map<String, Any?>) -> Unit,
 ) {
     val engine = rememberEngine()
@@ -178,15 +183,46 @@ private fun TokohArScene(
         onPlaced = { onEvent("placed", emptyMap()) },
     ) { placement ->
         if (instance != null) {
-            // Ukuran asli dari berkasnya (model placeholder: 1,7 m), jadi tokoh
-            // berdiri setinggi manusia di samping pemain. Cubit untuk mengubah
-            // ukuran, putar dua jari untuk memutar badannya.
-            AutoPlacementModel(
-                placement = placement,
-                state = placementState,
-                modelInstance = instance,
-                size = PlacementSize.RealWorld,
-            )
+            // AutoPlacementNode + ModelNode sendiri, bukan AutoPlacementModel:
+            // yang terakhir membuat ModelNode dengan autoAnimate, yang memutar
+            // SEMUA animasi di berkas sekaligus — pilihan animasi dari panel
+            // admin tidak akan pernah terlihat.
+            AutoPlacementNode(placement = placement, state = placementState) {
+                ModelNode(
+                    modelInstance = instance,
+                    autoAnimate = false,
+                    animationName = resolveAnimation(instance, animation),
+                    // Ukuran asli berkasnya (placeholder: 1,7 m), jadi tokoh
+                    // berdiri setinggi manusia. Kakinya di titik kontak lantai.
+                    scaleToUnits = null,
+                    centerOrigin = Position(x = 0f, y = -1f, z = 0f),
+                    // Dapat dipilih supaya cubit & putar dua jari sampai ke pivot
+                    // penempatan, tetapi tidak menggeser dirinya sendiri.
+                    isEditable = true,
+                    apply = {
+                        isPositionEditable = false
+                        isRotationEditable = false
+                        isScaleEditable = false
+                    },
+                )
+            }
         }
     }
 }
+
+/**
+ * Nama animasi yang diputar, dari pilihan admin (`modelAnimation`):
+ * - `null`/kosong → animasi pertama di berkas;
+ * - `@none`       → diam;
+ * - selain itu    → nama itu, bila memang ada; kalau tidak, animasi pertama
+ *   (lebih baik tokoh bergerak daripada diam karena salah ketik).
+ */
+private fun resolveAnimation(instance: ModelInstance, choice: String?): String? {
+    if (choice == ANIMATION_NONE) return null
+    val animator = instance.animator
+    val names = (0 until animator.animationCount).map { animator.getAnimationName(it) }
+    if (names.isEmpty()) return null
+    return choice?.takeIf { it.isNotBlank() && it in names } ?: names.first()
+}
+
+private const val ANIMATION_NONE = "@none"

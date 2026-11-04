@@ -16,7 +16,8 @@ class AppConfig {
     defaultValue: 'http://10.0.2.2:3000/api/v1',
   );
 
-  static const String appName = 'Jejak Cahaya';
+  /// Nusaverse — Nusantara Universe.
+  static const String appName = 'Nusaverse';
   static const String appTagline = 'Jelajahi. Temukan. Pelajari. Warisi.';
 
   static const Duration connectTimeout = Duration(seconds: 15);
