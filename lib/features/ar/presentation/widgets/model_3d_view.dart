@@ -6,6 +6,7 @@ import 'package:model_viewer_plus/model_viewer_plus.dart';
 
 import '../../../../app/theme/app_colors.dart';
 import '../../../../core/models/collectible.dart';
+import '../../data/model_cache.dart';
 
 /// Tokoh sebagai model 3D yang bisa diputar — cadangan bila AR tidak tersedia.
 ///
@@ -15,15 +16,15 @@ import '../../../../core/models/collectible.dart';
 /// `<model-viewer>` melempar pemain ke aplikasi Google, keluar dari permainan.
 class Model3dView extends StatefulWidget {
   const Model3dView({
-    required this.modelPath,
+    required this.source,
     required this.alt,
     this.animation,
     this.onFailed,
     super.key,
   });
 
-  /// Jalur berkas GLB di perangkat.
-  final String modelPath;
+  /// Model yang ditampilkan: aset di APK atau berkas unduhan.
+  final ModelSource source;
   final String alt;
 
   /// `Collectible.modelAnimation`: null = animasi pertama, `@none` = diam.
@@ -64,7 +65,7 @@ class _Model3dViewState extends State<Model3dView> {
       children: [
         ModelViewer(
           id: 'tokoh',
-          src: Uri.file(widget.modelPath).toString(),
+          src: widget.source.viewerSrc,
           alt: widget.alt,
           backgroundColor: AppColors.primaryDark,
           loading: Loading.eager,

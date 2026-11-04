@@ -4,6 +4,8 @@ import 'package:flutter/material.dart';
 import 'package:flutter/rendering.dart';
 import 'package:flutter/services.dart';
 
+import '../../data/model_cache.dart';
+
 /// Kamera AR native (ARCore + SceneView) dengan satu tokoh di lantai.
 ///
 /// Sisi native-nya ada di `android/app/src/main/kotlin/.../ArPlatformView.kt`.
@@ -13,20 +15,22 @@ import 'package:flutter/services.dart';
 /// dipindahkan ke tekstur Flutter — di mode tekstur layarnya hitam.
 class NativeArView extends StatefulWidget {
   const NativeArView({
-    required this.modelPath,
+    required this.source,
     this.animation,
     this.bottomInset = 0,
     this.onPlaced,
     this.onUnsupported,
     this.onSessionFailed,
     this.onModelFailed,
+    this.onModelLoaded,
+    this.onPhase,
     super.key,
   });
 
   static const String viewType = 'id.jejakcahaya/ar_view';
 
-  /// Jalur berkas GLB di perangkat (bukan URL).
-  final String modelPath;
+  /// Model yang ditampilkan: aset di APK atau berkas unduhan.
+  final ModelSource source;
 
   /// Pilihan animasi dari panel admin (`Collectible.modelAnimation`); sisi
   /// native yang menerjemahkannya, termasuk jatuh ke animasi pertama bila
@@ -41,6 +45,11 @@ class NativeArView extends StatefulWidget {
   final VoidCallback? onUnsupported;
   final ValueChanged<String>? onSessionFailed;
   final VoidCallback? onModelFailed;
+  final VoidCallback? onModelLoaded;
+
+  /// Tahap AR dari SceneView: nama `PlacementPhase` (mis. `SCANNING`,
+  /// `PLACED`, `CAMERA_ERROR`) dan apakah gambar kamera sudah tiba.
+  final void Function(String phase, bool hasCameraFrame)? onPhase;
 
   @override
   State<NativeArView> createState() => _NativeArViewState();
@@ -64,6 +73,13 @@ class _NativeArViewState extends State<NativeArView> {
                 ?.call(args is Map ? '${args['message']}' : 'unknown');
           case 'modelFailed':
             widget.onModelFailed?.call();
+          case 'modelLoaded':
+            widget.onModelLoaded?.call();
+          case 'phase':
+            final args = call.arguments;
+            if (args is Map) {
+              widget.onPhase?.call('${args['phase']}', args['camera'] == true);
+            }
         }
       });
   }
@@ -95,7 +111,10 @@ class _NativeArViewState extends State<NativeArView> {
           viewType: NativeArView.viewType,
           layoutDirection: TextDirection.ltr,
           creationParams: <String, Object?>{
-            'modelLocation': Uri.file(widget.modelPath).toString(),
+            if (widget.source.isBundled)
+              'assetKey': widget.source.assetKey
+            else
+              'modelLocation': Uri.file(widget.source.filePath!).toString(),
             'bottomInsetDp': widget.bottomInset,
             'animation': widget.animation,
           },

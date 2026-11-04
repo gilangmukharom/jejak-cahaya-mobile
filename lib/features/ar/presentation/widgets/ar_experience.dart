@@ -50,11 +50,25 @@ class _ArExperienceState extends State<ArExperience> {
   static const double _sheetPeek = 176;
   static const double _actionBarHeight = 76;
 
+  /// Batas menunggu jawaban ARCore. Pada perangkat normal jawabannya datang
+  /// dalam ratusan milidetik.
+  static const Duration _arCheckTimeout = Duration(seconds: 6);
+
+  /// Batas menunggu gambar pertama dari kamera AR. Lewat dari ini tanpa
+  /// satu bingkai pun, tokohnya ditampilkan dalam 3D — pemain tidak boleh
+  /// ditinggal menatap layar kosong.
+  static const Duration _cameraWatchdog = Duration(seconds: 12);
+
   _Stage _stage = _Stage.preparing;
   bool _arSupported = false;
   bool _placed = false;
   double? _progress;
-  String? _modelPath;
+  ModelSource? _source;
+
+  /// Tahap AR terakhir dari SceneView (nama `PlacementPhase`).
+  String? _arPhase;
+  bool _hasCameraFrame = false;
+  Timer? _watchdog;
 
   @override
   void initState() {
@@ -62,53 +76,115 @@ class _ArExperienceState extends State<ArExperience> {
     unawaited(_prepare());
   }
 
+  @override
+  void dispose() {
+    _watchdog?.cancel();
+    super.dispose();
+  }
+
   Future<void> _prepare() async {
     setState(() {
       _stage = _Stage.preparing;
       _progress = null;
+      _source = null;
       _placed = false;
     });
 
     try {
-      // Keduanya berjalan bersamaan: pemeriksaan ARCore selesai jauh sebelum
-      // unduhan, jadi tidak ada waktu yang terbuang menunggunya.
-      final supported = sl<ArCapability>().isSupported();
-      final file = await sl<ModelCache>().obtain(
+      // Keduanya berjalan bersamaan: pemeriksaan ARCore biasanya selesai jauh
+      // sebelum unduhan, jadi tidak ada waktu yang terbuang menunggunya.
+      //
+      // Batas waktunya wajib. ARCore bisa lama sekali — atau tidak pernah —
+      // menjawab, mis. saat Google Play Services for AR belum terpasang dan ia
+      // masih bertanya ke Play Store. Lewat batas, tokohnya ditampilkan dalam
+      // 3D: pemain tetap melihatnya, dan sakelar di atas masih bisa mencoba AR.
+      final supported = sl<ArCapability>()
+          .isSupported()
+          .timeout(_arCheckTimeout, onTimeout: () => false);
+
+      // Model bawaan dibaca langsung dari APK (seketika); selain itu diunduh.
+      final source = await sl<ModelCache>().resolve(
         widget.collectible.modelUrl!,
         onProgress: (value) {
           if (mounted) setState(() => _progress = value);
         },
       );
+      if (!mounted) return;
+      // Model siap; yang tersisa hanya jawaban ARCore. Ditandai supaya layar
+      // tidak lagi menampilkan "100%" yang terlihat seperti macet.
+      setState(() => _source = source);
+
       final arSupported = await supported;
       if (!mounted) return;
 
-      setState(() {
-        _modelPath = file.path;
-        _arSupported = arSupported;
-        _stage = arSupported ? _Stage.ar : _Stage.model3d;
-      });
+      setState(() => _arSupported = arSupported);
+      if (arSupported) {
+        _enterAr();
+      } else {
+        setState(() => _stage = _Stage.model3d);
+      }
     } on Object catch (error) {
       debugPrint('AR: model tidak bisa disiapkan — $error');
       if (mounted) setState(() => _stage = _Stage.failed);
     }
   }
 
+  /// Masuk ke kamera AR, dengan pengaman: bila kamera tidak pernah memberi
+  /// gambar, beralih ke 3D alih-alih menampilkan layar kosong selamanya.
+  void _enterAr() {
+    _watchdog?.cancel();
+    setState(() {
+      _stage = _Stage.ar;
+      _placed = false;
+      _arPhase = null;
+      _hasCameraFrame = false;
+    });
+    _watchdog = Timer(_cameraWatchdog, () {
+      if (!_hasCameraFrame) {
+        _fallBackTo3d(
+          'Kamera AR tidak menampilkan gambar — tokoh ditampilkan dalam 3D.',
+        );
+      }
+    });
+  }
+
+  void _onArPhase(String phase, bool hasCameraFrame) {
+    if (!mounted) return;
+    setState(() {
+      _arPhase = phase;
+      _hasCameraFrame = hasCameraFrame;
+    });
+    if (hasCameraFrame) _watchdog?.cancel();
+    if (phase == 'CAMERA_ERROR') {
+      _fallBackTo3d('Kamera AR tidak bisa dimulai — tokoh ditampilkan dalam 3D.');
+    }
+  }
+
   Future<void> _retryAfterBrokenFile() async {
-    await sl<ModelCache>().evict(widget.collectible.modelUrl!);
+    final source = _source;
+    if (source == null || !source.isBundled) {
+      await sl<ModelCache>().evict(widget.collectible.modelUrl!);
+    }
     await _prepare();
   }
 
   void _fallBackTo3d(String message) {
     if (!mounted || _stage != _Stage.ar) return;
+    _watchdog?.cancel();
     setState(() => _stage = _Stage.model3d);
     showInfoSnack(context, message);
   }
 
   void _toggleMode() {
-    setState(() {
-      _placed = false;
-      _stage = _stage == _Stage.ar ? _Stage.model3d : _Stage.ar;
-    });
+    if (_stage == _Stage.ar) {
+      _watchdog?.cancel();
+      setState(() {
+        _placed = false;
+        _stage = _Stage.model3d;
+      });
+    } else {
+      _enterAr();
+    }
   }
 
   @override
@@ -135,8 +211,8 @@ class _ArExperienceState extends State<ArExperience> {
               (_stage == _Stage.ar || _stage == _Stage.model3d),
           onToggle: _toggleMode,
         ),
-        if (_stage == _Stage.ar && _placed)
-          const _PlacedChip(),
+        if (_stage == _Stage.ar)
+          _placed ? const _PlacedChip() : _ArStatusChip(phase: _arPhase),
         DraggableScrollableSheet(
           initialChildSize: minSheet,
           minChildSize: minSheet,
@@ -170,10 +246,14 @@ class _ArExperienceState extends State<ArExperience> {
   }
 
   Widget _buildStage(double bottomChrome) {
-    final path = _modelPath;
+    final source = _source;
     switch (_stage) {
       case _Stage.preparing:
-        return _PreparingView(progress: _progress, bottomInset: bottomChrome);
+        return _PreparingView(
+          progress: _progress,
+          downloaded: source != null,
+          bottomInset: bottomChrome,
+        );
       case _Stage.failed:
         return _FailedView(
           bottomInset: bottomChrome,
@@ -181,10 +261,11 @@ class _ArExperienceState extends State<ArExperience> {
         );
       case _Stage.ar:
         return NativeArView(
-          key: ValueKey('ar-$path'),
-          modelPath: path!,
+          key: ValueKey('ar-${source!.id}'),
+          source: source,
           animation: widget.collectible.modelAnimation,
           bottomInset: bottomChrome,
+          onPhase: _onArPhase,
           onPlaced: () {
             unawaited(HapticFeedback.mediumImpact());
             setState(() => _placed = true);
@@ -192,7 +273,9 @@ class _ArExperienceState extends State<ArExperience> {
           onUnsupported: () {
             sl<ArCapability>().markUnsupported();
             setState(() => _arSupported = false);
-            _fallBackTo3d('Perangkat ini belum mendukung AR — tokoh ditampilkan dalam 3D.');
+            _fallBackTo3d(
+              'Perangkat ini belum mendukung AR — tokoh ditampilkan dalam 3D.',
+            );
           },
           onSessionFailed: (_) => _fallBackTo3d(
             'Kamera AR tidak bisa dimulai — tokoh ditampilkan dalam 3D.',
@@ -203,14 +286,60 @@ class _ArExperienceState extends State<ArExperience> {
         return Padding(
           padding: EdgeInsets.only(bottom: bottomChrome - 24),
           child: Model3dView(
-            key: ValueKey('3d-$path'),
-            modelPath: path!,
+            key: ValueKey('3d-${source!.id}'),
+            source: source,
             alt: 'Model 3D ${widget.collectible.name}',
             animation: widget.collectible.modelAnimation,
             onFailed: () => setState(() => _stage = _Stage.failed),
           ),
         );
     }
+  }
+}
+
+/// Keterangan singkat tahap AR sebelum tokoh berdiri di lantai.
+///
+/// Selain menuntun pemain, ini juga jalan cepat mendiagnosis di lapangan:
+/// bila tulisannya berganti ("Arahkan kamera ke lantai…") tetapi gambar
+/// kameranya tidak terlihat, mesin AR-nya berjalan dan yang bermasalah adalah
+/// penampilannya — bukan model atau ARCore.
+class _ArStatusChip extends StatelessWidget {
+  const _ArStatusChip({required this.phase});
+
+  final String? phase;
+
+  @override
+  Widget build(BuildContext context) {
+    final text = switch (phase) {
+      'SCANNING' => 'Arahkan kamera ke lantai, gerakkan perlahan',
+      'NO_SURFACE' => 'Lantai belum terlihat — cari tempat terang & bertekstur',
+      'TRACKING_LOST' || 'RECOVERING' => 'Arahkan kembali ke tempat tokoh berdiri',
+      'RECOVERY_FAILED' => 'Tokoh hilang dari pandangan — gerakkan ponsel perlahan',
+      _ => 'Menyalakan kamera AR…',
+    };
+
+    return Align(
+      alignment: Alignment.topCenter,
+      child: SafeArea(
+        child: Padding(
+          padding: const EdgeInsets.only(top: 60),
+          child: Container(
+            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+            decoration: BoxDecoration(
+              color: Colors.black.withValues(alpha: 0.45),
+              borderRadius: BorderRadius.circular(999),
+            ),
+            child: Text(
+              text,
+              style: Theme.of(context)
+                  .textTheme
+                  .labelSmall
+                  ?.copyWith(color: Colors.white),
+            ),
+          ),
+        ),
+      ),
+    );
   }
 }
 
@@ -345,16 +474,31 @@ class _PlacedChip extends StatelessWidget {
 }
 
 class _PreparingView extends StatelessWidget {
-  const _PreparingView({required this.progress, required this.bottomInset});
+  const _PreparingView({
+    required this.progress,
+    required this.downloaded,
+    required this.bottomInset,
+  });
 
   final double? progress;
+
+  /// Model sudah tersimpan di ponsel; tinggal menyiapkan kamera AR.
+  final bool downloaded;
   final double bottomInset;
 
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    final value = progress;
+    // Setelah unduhan selesai bilahnya tidak lagi menunjukkan persen — "100%"
+    // yang diam terbaca sebagai macet — melainkan bergerak tak tentu selama
+    // kamera AR disiapkan.
+    final value = downloaded ? null : progress;
     final percent = value == null ? null : (value * 100).round();
+    final title = downloaded
+        ? 'Menyiapkan kamera AR…'
+        : percent == null
+            ? 'Memanggil tokoh…'
+            : 'Memanggil tokoh… $percent%';
 
     return Padding(
       padding: EdgeInsets.only(bottom: bottomInset),
@@ -371,9 +515,7 @@ class _PreparingView extends StatelessWidget {
               ),
               const SizedBox(height: 20),
               Text(
-                percent == null
-                    ? 'Memanggil tokoh…'
-                    : 'Memanggil tokoh… $percent%',
+                title,
                 style: theme.textTheme.titleMedium
                     ?.copyWith(color: AppColors.textOnDark),
               ),
@@ -390,8 +532,10 @@ class _PreparingView extends StatelessWidget {
               ),
               const SizedBox(height: 12),
               Text(
-                'Hanya sekali di awal — setelah ini tokohnya tersimpan di ponselmu. '
-                'Sambil menunggu, baca kisahnya di bawah.',
+                downloaded
+                    ? 'Sebentar lagi tokohnya hadir di sekitarmu.'
+                    : 'Hanya sekali di awal — setelah ini tokohnya tersimpan di ponselmu. '
+                        'Sambil menunggu, baca kisahnya di bawah.',
                 textAlign: TextAlign.center,
                 style: theme.textTheme.bodySmall?.copyWith(
                   color: AppColors.textOnDark.withValues(alpha: 0.6),

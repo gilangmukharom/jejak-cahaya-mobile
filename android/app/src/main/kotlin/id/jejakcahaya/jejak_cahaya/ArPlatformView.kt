@@ -9,8 +9,10 @@ import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.produceState
+import androidx.compose.runtime.snapshotFlow
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.ComposeView
 import androidx.compose.ui.platform.ViewCompositionStrategy
@@ -18,6 +20,7 @@ import androidx.compose.ui.unit.dp
 import androidx.lifecycle.setViewTreeLifecycleOwner
 import androidx.lifecycle.setViewTreeViewModelStoreOwner
 import androidx.savedstate.setViewTreeSavedStateRegistryOwner
+import io.flutter.FlutterInjector
 import io.flutter.plugin.common.BinaryMessenger
 import io.flutter.plugin.common.MethodChannel
 import io.flutter.plugin.common.StandardMessageCodec
@@ -26,6 +29,7 @@ import io.flutter.plugin.platform.PlatformViewFactory
 import io.github.sceneview.ar.ARCoreAvailability
 import io.github.sceneview.ar.AutoPlacementNode
 import io.github.sceneview.ar.AutoPlacementScene
+import io.github.sceneview.ar.PlacementPhase
 import io.github.sceneview.ar.rememberAutoPlacementState
 import io.github.sceneview.math.Position
 import io.github.sceneview.model.ModelInstance
@@ -33,6 +37,22 @@ import io.github.sceneview.model.model
 import io.github.sceneview.rememberEngine
 import io.github.sceneview.rememberModelLoader
 import kotlinx.coroutines.CancellationException
+import kotlinx.coroutines.flow.distinctUntilChanged
+
+/**
+ * Model yang dibundel di APK datang sebagai kunci aset Flutter
+ * (`assets/models/soekarno.glb`) dan diterjemahkan ke jalur di AssetManager
+ * (`flutter_assets/assets/models/soekarno.glb`) — jalur tanpa skema yang dibaca
+ * SceneView langsung dari APK, tanpa disalin ke penyimpanan lebih dulu.
+ * Model unduhan datang sebagai `file://`.
+ */
+private fun resolveModelLocation(params: Map<String, Any?>): String {
+    val assetKey = params["assetKey"] as? String
+    if (!assetKey.isNullOrEmpty()) {
+        return FlutterInjector.instance().flutterLoader().getLookupKeyForAsset(assetKey)
+    }
+    return params["modelLocation"] as? String ?: ""
+}
 
 class ArPlatformViewFactory(
     private val messenger: BinaryMessenger,
@@ -42,7 +62,7 @@ class ArPlatformViewFactory(
         val params = args as? Map<String, Any?> ?: emptyMap()
         return ArPlatformView(
             context = context,
-            modelLocation = params["modelLocation"] as? String ?: "",
+            modelLocation = resolveModelLocation(params),
             bottomInsetDp = (params["bottomInsetDp"] as? Number)?.toFloat() ?: 0f,
             animationChoice = params["animation"] as? String,
             events = MethodChannel(messenger, "${ArPlatformView.VIEW_TYPE}/$viewId"),
@@ -61,6 +81,11 @@ class ArPlatformViewFactory(
  *  - `modelFailed`    — berkas GLB tidak bisa dibaca.
  *  - `unsupported`    — ternyata perangkat tidak bisa menjalankan ARCore.
  *  - `sessionFailed`  — sesi AR gagal dimulai (kamera dipakai aplikasi lain, dsb.).
+ *  - `modelLoaded`    — berkas GLB selesai diurai dan siap ditaruh.
+ *  - `phase`          — tahap AR berganti (`phase`: nama [PlacementPhase],
+ *                       `camera`: sudah ada gambar kamera atau belum). Dipakai
+ *                       Flutter untuk menampilkan status dan, bila kamera tak
+ *                       pernah memberi gambar, beralih ke tampilan 3D.
  */
 class ArPlatformView(
     context: Context,
@@ -159,6 +184,15 @@ private fun TokohArScene(
             ModelLoad.Failed
         }
         if (value == ModelLoad.Failed) onEvent("modelFailed", emptyMap())
+        if (value is ModelLoad.Ready) onEvent("modelLoaded", emptyMap())
+    }
+
+    LaunchedEffect(placementState) {
+        snapshotFlow { placementState.phase to placementState.hasCameraFrame }
+            .distinctUntilChanged()
+            .collect { (phase, camera) ->
+                onEvent("phase", mapOf("phase" to phase.name, "camera" to camera))
+            }
     }
 
     val instance = (load as? ModelLoad.Ready)?.instance

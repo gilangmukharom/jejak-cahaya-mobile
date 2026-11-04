@@ -30,6 +30,38 @@ class ModelCache {
 
   final Dio _dio;
 
+  /// Model yang ikut di dalam APK, dikunci dengan nama berkasnya di server.
+  ///
+  /// Tokoh yang memakai salah satunya tidak mengunduh apa pun: modelnya
+  /// langsung dibaca dari aplikasi, jadi muncul seketika dan tetap jalan tanpa
+  /// sinyal. Nama berkas lain (model unggahan admin) tetap diunduh.
+  ///
+  /// Menambah model bawaan: salin GLB ke `assets/models/`, daftarkan di
+  /// pubspec.yaml, lalu tambahkan barisnya di sini dengan nama yang sama
+  /// persis seperti di pustaka server.
+  static const Map<String, String> bundledModels = {
+    'soekarno.glb': 'assets/models/soekarno.glb',
+  };
+
+  /// Kunci aset bawaan untuk [modelUrl], atau null bila harus diunduh.
+  static String? bundledAssetFor(String modelUrl) {
+    final path = Uri.tryParse(modelUrl.trim())?.path ?? '';
+    if (!path.startsWith('/static/models/')) return null;
+    return bundledModels[path.substring('/static/models/'.length)];
+  }
+
+  /// Sumber model untuk [modelUrl]: aset di APK bila tersedia, selain itu
+  /// berkas hasil unduhan (lihat [obtain]).
+  Future<ModelSource> resolve(
+    String modelUrl, {
+    void Function(double? progress)? onProgress,
+  }) async {
+    final asset = bundledAssetFor(modelUrl);
+    if (asset != null) return ModelSource.asset(asset);
+    final file = await obtain(modelUrl, onProgress: onProgress);
+    return ModelSource.file(file.path);
+  }
+
   /// Unduhan yang sedang berjalan, agar dua layar yang meminta model yang
   /// sama tidak mengunduhnya dua kali sekaligus.
   final Map<String, Future<File>> _inFlight = {};
@@ -115,4 +147,27 @@ class ModelCache {
       return false;
     }
   }
+}
+
+/// Dari mana model sebuah tokoh dibaca: aset yang dibundel di APK, atau
+/// berkas yang sudah diunduh ke penyimpanan ponsel.
+class ModelSource {
+  const ModelSource.asset(String this.assetKey) : filePath = null;
+  const ModelSource.file(String this.filePath) : assetKey = null;
+
+  /// Kunci aset Flutter, mis. `assets/models/soekarno.glb`.
+  final String? assetKey;
+
+  /// Jalur berkas di ponsel.
+  final String? filePath;
+
+  bool get isBundled => assetKey != null;
+
+  /// Identitas stabil — dipakai sebagai kunci widget agar mesin AR dibuat
+  /// ulang hanya bila modelnya benar-benar berganti.
+  String get id => assetKey ?? filePath!;
+
+  /// Nilai `src` untuk `<model-viewer>`: kunci aset tanpa skema dibaca dari
+  /// bundel aplikasi, `file://` dari penyimpanan.
+  String get viewerSrc => assetKey ?? Uri.file(filePath!).toString();
 }

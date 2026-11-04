@@ -178,6 +178,11 @@ flutter:
     # ikut membundel README.md di sebelahnya ke dalam APK.
     # Lihat assets/map/README.md untuk cara membuat ulang berkas ini.
     - assets/map/basemap.pmtiles
+    # Model 3D bawaan tokoh (AR). Dibundel agar tokoh langsung hadir setelah
+    # scan — tanpa unduhan 28 MB di checkpoint, dan tetap jalan tanpa sinyal.
+    # Model lain yang dipilih admin lewat panel tetap diunduh dari server.
+    # Pemetaan URL server → aset ini ada di features/ar/data/model_cache.dart.
+    - assets/models/soekarno.glb
   # Tipografi memakai Plus Jakarta Sans lewat paket google_fonts, sehingga tidak
   # ada berkas font yang perlu dibundel. Bila nanti ingin memakai font Arab
   # (mis. Amiri) untuk kaligrafi, letakkan .ttf-nya di assets/fonts/ lalu

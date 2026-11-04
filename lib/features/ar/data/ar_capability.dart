@@ -21,17 +21,19 @@ class ArCapability {
     if (cached != null) return cached;
 
     try {
-      var answer = await _channel.invokeMethod<String>('checkAvailability');
+      var answer = await _ask();
 
       // "unknown" berarti ARCore masih memeriksa perangkat — biasanya hanya
       // sesaat pada pemanggilan pertama setelah pemasangan.
       for (var attempt = 0; answer == 'unknown' && attempt < 6; attempt++) {
         await Future<void>.delayed(const Duration(milliseconds: 250));
-        answer = await _channel.invokeMethod<String>('checkAvailability');
+        answer = await _ask();
       }
 
       final supported = answer == 'supported';
-      if (answer != 'unknown') _cached = supported;
+      // "unknown" dan "timeout" tidak disimpan: lain kali ditanya ulang,
+      // karena ARCore mungkin sudah selesai memeriksa.
+      if (answer == 'supported' || answer == 'unsupported') _cached = supported;
       return supported;
     } on PlatformException {
       return false;
@@ -39,6 +41,16 @@ class ArCapability {
       return false;
     }
   }
+
+  /// Satu pertanyaan ke ARCore, dibatasi waktunya: bila jawabannya tidak
+  /// pernah datang, pemanggil tidak boleh ikut menunggu selamanya.
+  Future<String?> _ask() => _channel
+      .invokeMethod<String>('checkAvailability')
+      .timeout(askTimeout, onTimeout: () => 'timeout');
+
+  /// Batas satu pertanyaan ke ARCore.
+  @visibleForTesting
+  static Duration askTimeout = const Duration(seconds: 4);
 
   /// Dipanggil bila sesi AR ternyata tidak bisa berjalan meski ARCore
   /// mengaku mendukung, agar layar berikutnya langsung memakai tampilan 3D.
