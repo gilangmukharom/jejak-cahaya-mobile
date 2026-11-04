@@ -44,7 +44,7 @@ class ArPlatformViewFactory(
             context = context,
             modelLocation = params["modelLocation"] as? String ?: "",
             bottomInsetDp = (params["bottomInsetDp"] as? Number)?.toFloat() ?: 0f,
-            animation = params["animation"] as? String,
+            animationChoice = params["animation"] as? String,
             events = MethodChannel(messenger, "${ArPlatformView.VIEW_TYPE}/$viewId"),
         )
     }
@@ -66,8 +66,12 @@ class ArPlatformView(
     context: Context,
     private val modelLocation: String,
     private val bottomInsetDp: Float,
-    /** Pilihan animasi dari panel admin — lihat [resolveAnimation]. */
-    private val animation: String?,
+    /**
+     * Pilihan animasi dari panel admin — lihat [resolveAnimation]. Sengaja
+     * bukan `animation`: di dalam `ComposeView.apply { }` nama itu tertangkap
+     * sebagai `View.animation` milik Android.
+     */
+    private val animationChoice: String?,
     private val events: MethodChannel,
 ) : PlatformView {
 
@@ -89,7 +93,7 @@ class ArPlatformView(
             TokohArScene(
                 modelLocation = modelLocation,
                 bottomInsetDp = bottomInsetDp,
-                animation = animation,
+                animation = animationChoice,
                 onEvent = ::emit,
             )
         }
