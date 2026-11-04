@@ -211,7 +211,9 @@ class ExploreCubit extends Cubit<ExploreState> with SafeEmit<ExploreState> {
         hint: checkpoint.hint,
         distanceM: (distance * 10).round() / 10,
         bearingDeg: (bearing * 10).round() / 10,
-        isInRange: distance <= checkpoint.radiusMeters,
+        isInRange:
+            !checkpoint.enforceRadius || distance <= checkpoint.radiusMeters,
+        enforceRadius: checkpoint.enforceRadius,
       );
     }).toList(growable: false);
 

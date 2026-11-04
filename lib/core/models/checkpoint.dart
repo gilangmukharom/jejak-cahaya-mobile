@@ -24,6 +24,7 @@ class Checkpoint extends Equatable {
     this.distanceM,
     this.bearingDeg,
     this.isInRange,
+    this.enforceRadius = true,
   });
 
   final String id;
@@ -47,6 +48,10 @@ class Checkpoint extends Equatable {
   final double? bearingDeg;
   final bool? isInRange;
 
+  /// False bila admin mematikan radius lokasinya — titik bisa dipindai dari
+  /// mana saja, dan [isInRange] selalu true.
+  final bool enforceRadius;
+
   factory Checkpoint.fromJson(Map<String, dynamic> json) => Checkpoint(
         id: Json.str(json['id']),
         code: Json.str(json['code']),
@@ -62,6 +67,9 @@ class Checkpoint extends Equatable {
         distanceM: Json.doubleOrNull(json['distanceM']),
         bearingDeg: Json.doubleOrNull(json['bearingDeg']),
         isInRange: json['isInRange'] is bool ? json['isInRange'] as bool : null,
+        enforceRadius: json['enforceRadius'] is bool
+            ? json['enforceRadius'] as bool
+            : true,
       );
 
   /// Jarak dalam bentuk yang mudah dibaca: "12 m" atau "1,3 km".
@@ -78,7 +86,7 @@ class Checkpoint extends Equatable {
 
   @override
   List<Object?> get props =>
-      [id, code, playOrder, isDiscovered, distanceM, isInRange];
+      [id, code, playOrder, isDiscovered, distanceM, isInRange, enforceRadius];
 }
 
 /// Pratinjau collectible pada sebuah checkpoint.

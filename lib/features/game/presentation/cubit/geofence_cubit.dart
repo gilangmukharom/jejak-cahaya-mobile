@@ -44,8 +44,9 @@ class NearestMosque extends Equatable {
   final double distanceM;
 
   /// Sisa jarak sampai masuk area bermain.
-  double get metersToEnter =>
-      (distanceM - mosque.radiusMeters).clamp(0, double.infinity);
+  double get metersToEnter => mosque.enforceRadius
+      ? (distanceM - mosque.radiusMeters).clamp(0, double.infinity)
+      : 0;
 
   @override
   List<Object?> get props => [mosque.id, distanceM];

@@ -84,6 +84,7 @@ class Mosque extends Equatable {
     this.distanceM,
     this.metersToEnter,
     this.isInside,
+    this.enforceRadius = true,
     this.progress,
   });
 
@@ -114,6 +115,9 @@ class Mosque extends Equatable {
   /// Apakah pemain sedang berada di dalam areanya. Null bila jarak tak diketahui.
   final bool? isInside;
 
+  /// False bila admin mematikan radius: lokasi bisa dimainkan dari mana saja.
+  final bool enforceRadius;
+
   /// Kemajuan pemain di lokasi ini. Null untuk tamu yang belum login.
   final MosqueProgress? progress;
 
@@ -143,6 +147,10 @@ class Mosque extends Equatable {
             : Json.decimal(json['metersToEnter']),
         isInside:
             json['isInside'] == null ? null : Json.boolean(json['isInside']),
+        // Ketiadaan field (server lama) berarti radius tetap ditegakkan.
+        enforceRadius: json['enforceRadius'] is bool
+            ? json['enforceRadius'] as bool
+            : true,
         progress: json['progress'] == null
             ? null
             : MosqueProgress.fromJson(Json.map(json['progress'])),
@@ -168,8 +176,11 @@ class Mosque extends Equatable {
         checkpointCount: checkpointCount,
         missionCount: missionCount,
         distanceM: meters,
-        metersToEnter: (meters - radiusMeters).clamp(0, double.infinity),
-        isInside: meters <= radiusMeters,
+        metersToEnter: enforceRadius
+            ? (meters - radiusMeters).clamp(0, double.infinity)
+            : 0,
+        isInside: !enforceRadius || meters <= radiusMeters,
+        enforceRadius: enforceRadius,
         progress: progress,
       );
 
@@ -185,6 +196,7 @@ class Mosque extends Equatable {
         missionCount,
         distanceM,
         isInside,
+        enforceRadius,
         progress,
       ];
 }
@@ -213,8 +225,9 @@ class GeofenceStatus extends Equatable {
       );
 
   /// Berapa jauh lagi pemain harus berjalan agar masuk area, dalam meter.
-  double get metersToEnter =>
-      (distanceM - radiusMeters).clamp(0, double.infinity);
+  double get metersToEnter => mosque.enforceRadius
+      ? (distanceM - radiusMeters).clamp(0, double.infinity)
+      : 0;
 
   @override
   List<Object?> get props => [isInside, distanceM, radiusMeters, mosque];
