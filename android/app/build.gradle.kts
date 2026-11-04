@@ -2,6 +2,7 @@ import java.util.Properties
 
 plugins {
     id("com.android.application")
+    id("org.jetbrains.kotlin.plugin.compose")
     // The Flutter Gradle Plugin must be applied after the Android and Kotlin Gradle plugins.
     id("dev.flutter.flutter-gradle-plugin")
 }
@@ -29,8 +30,16 @@ if (hasReleaseKeystore) {
 
 android {
     namespace = "id.jejakcahaya.jejak_cahaya"
-    compileSdk = flutter.compileSdkVersion
+    // 37, bukan `flutter.compileSdkVersion` (36): SceneView 4.x — mesin AR
+    // tokoh — menyatakan minCompileSdk 37 di metadata AAR-nya, dan build
+    // menolak berjalan di bawahnya. compileSdk hanya menentukan API yang boleh
+    // dirujuk saat kompilasi; minSdk dan targetSdk tidak ikut berubah.
+    compileSdk = 37
     ndkVersion = flutter.ndkVersion
+
+    buildFeatures {
+        compose = true
+    }
 
     compileOptions {
         // Diperlukan flutter_local_notifications: pustaka itu memakai API waktu
@@ -99,6 +108,19 @@ dependencies {
     // Versinya disamakan dengan yang dipakai flutter_local_notifications; dua
     // versi desugar_jdk_libs yang berbeda dalam satu build akan bentrok.
     coreLibraryDesugaring("com.android.tools:desugar_jdk_libs:2.1.4")
+
+    // ── AR tokoh ──────────────────────────────────────────────────────
+    // SceneView = ARCore + Filament. Dipilih karena merender GLB beranimasi
+    // (rig Mixamo) langsung, menaruhnya otomatis di lantai, dan masih dirawat;
+    // alternatif Sceneform sudah lama ditinggalkan Google. ARCore dinyatakan
+    // "optional" oleh manifest pustaka ini, jadi aplikasi tetap terpasang di
+    // perangkat tanpa ARCore — di sana Flutter menampilkan penampil 3D biasa.
+    implementation("io.github.sceneview:arsceneview:4.65.0")
+    // Disebut langsung karena kode di MainActivity/ArPlatformView memakainya;
+    // versinya diikat BOM yang sama dengan yang dipakai SceneView.
+    implementation(platform("androidx.compose:compose-bom:2026.09.00"))
+    implementation("androidx.compose.ui:ui")
+    implementation("androidx.compose.foundation:foundation")
 }
 
 kotlin {

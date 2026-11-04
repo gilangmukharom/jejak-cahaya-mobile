@@ -5,6 +5,8 @@ import 'package:go_router/go_router.dart';
 
 import '../../core/di/injection.dart';
 import '../../core/services/scan_result_holder.dart';
+import '../../features/ar/presentation/pages/ar_discovery_page.dart';
+import '../../features/ar/presentation/pages/ar_viewer_page.dart';
 import '../../features/auth/presentation/cubit/auth_cubit.dart';
 import '../../features/auth/presentation/pages/login_page.dart';
 import '../../features/auth/presentation/pages/register_page.dart';
@@ -160,8 +162,24 @@ class AppRouter {
         },
       ),
       GoRoute(
+        path: AppRoutes.discoveryAr,
+        builder: (context, state) {
+          // Sama seperti layar penemuan: dibaca dari holder agar kebal
+          // terhadap penyegaran router.
+          final result = sl<ScanResultHolder>().lastResult;
+          if (result == null) return const ExplorePage();
+          return ArDiscoveryPage(result: result);
+        },
+      ),
+      GoRoute(
         path: AppRoutes.collectibleDetailPattern,
         builder: (context, state) => CollectibleDetailPage(
+          idOrSlug: state.pathParameters['idOrSlug'] ?? '',
+        ),
+      ),
+      GoRoute(
+        path: AppRoutes.collectibleArPattern,
+        builder: (context, state) => ArViewerPage(
           idOrSlug: state.pathParameters['idOrSlug'] ?? '',
         ),
       ),

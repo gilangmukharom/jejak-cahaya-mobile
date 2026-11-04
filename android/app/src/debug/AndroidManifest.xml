@@ -10,6 +10,11 @@
          ini setiap permintaan gagal dengan CLEARTEXT_NOT_PERMITTED.
 
          Hanya berlaku untuk build debug — manifest release tidak memuatnya,
-         sehingga aplikasi yang dirilis tetap mewajibkan HTTPS. -->
+         sehingga aplikasi yang dirilis tetap mewajibkan HTTPS.
+
+         Catatan: sejak manifest utama memasang networkSecurityConfig, atribut
+         ini diabaikan Android 7+. Izin yang sebenarnya berlaku datang dari
+         src/debug/res/xml/network_security_config.xml; baris ini dibiarkan
+         hanya untuk perangkat yang lebih tua. -->
     <application android:usesCleartextTraffic="true" />
 </manifest>

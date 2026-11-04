@@ -43,7 +43,16 @@ class AppRoutes {
   static const String achievements = '/achievements';
 
   static const String discoveryResult = '/discovery';
+
+  /// Tokoh yang baru ditemukan, hadir dalam AR — dibuka langsung oleh pemindai
+  /// sebelum layar hadiah [discoveryResult]. Membaca hasil scan dari holder.
+  static const String discoveryAr = '/discovery/ar';
   static String collectibleDetail(String idOrSlug) => '/collectible/$idOrSlug';
+
+  /// Penampil 3D/AR satu tokoh. Membawa slug, bukan alamat modelnya: halaman
+  /// itu mengambil ulang collectible dari server, sehingga alamat model hanya
+  /// pernah datang dari backend — yang menahannya sampai tokohnya ditemukan.
+  static String collectibleAr(String idOrSlug) => '/collectible/$idOrSlug/ar';
   static String missionDetail(String id) => '/missions/$id';
   static String quiz(String quizId) => '/quiz/$quizId';
 
@@ -54,6 +63,7 @@ class AppRoutes {
 
   // Pola jalur untuk pendaftaran rute (memakai parameter go_router).
   static const String collectibleDetailPattern = '/collectible/:idOrSlug';
+  static const String collectibleArPattern = '/collectible/:idOrSlug/ar';
   static const String missionDetailPattern = '/missions/:id';
   static const String quizPattern = '/quiz/:quizId';
 

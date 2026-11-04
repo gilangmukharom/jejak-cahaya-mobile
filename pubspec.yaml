@@ -112,6 +112,13 @@ dependencies:
   # sehingga gagal dibangun pada Android Gradle Plugin yang dipakai proyek ini.
   sensors_plus: ^7.1.0
 
+  # ── AR tokoh ──────────────────────────────────────────────────
+  # AR-nya sendiri native (ARCore + SceneView, lihat android/app/build.gradle.kts
+  # dan ArPlatformView.kt) — tidak ada paket Flutter AR yang masih dirawat dan
+  # bisa dibangun untuk compileSdk 37. Paket ini hanya cadangan: menampilkan
+  # tokoh sebagai model 3D yang bisa diputar di perangkat tanpa ARCore dan di iOS.
+  model_viewer_plus: ^1.10.0
+
 dev_dependencies:
   flutter_test:
     sdk: flutter

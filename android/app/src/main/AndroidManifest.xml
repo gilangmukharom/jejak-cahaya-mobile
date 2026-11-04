@@ -46,10 +46,16 @@
          sebagai angka ketika jarumnya tidak bisa digerakkan. -->
     <uses-feature android:name="android.hardware.sensor.compass" android:required="false" />
 
+    <!-- AR tokoh setelah scan QR. Tidak diwajibkan: perangkat tanpa ARCore
+         tetap mendapat tokohnya sebagai model 3D yang bisa diputar. Meta-data
+         `com.google.ar.core = optional` ikut digabungkan dari pustaka SceneView. -->
+    <uses-feature android:name="android.hardware.camera.ar" android:required="false" />
+
     <application
         android:label="Jejak Cahaya"
         android:name="${applicationName}"
-        android:icon="@mipmap/ic_launcher">
+        android:icon="@mipmap/ic_launcher"
+        android:networkSecurityConfig="@xml/network_security_config">
         <activity
             android:name=".MainActivity"
             android:exported="true"

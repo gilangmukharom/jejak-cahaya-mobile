@@ -2,6 +2,8 @@ import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:get_it/get_it.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
+import '../../features/ar/data/ar_capability.dart';
+import '../../features/ar/data/model_cache.dart';
 import '../../features/auth/data/auth_repository.dart';
 import '../../features/auth/presentation/cubit/auth_cubit.dart';
 import '../../features/game/data/game_repository.dart';
@@ -62,7 +64,11 @@ Future<void> configureDependencies() async {
     // Singleton karena arsip petanya hanya perlu disalin dan dibuka sekali:
     // membuatnya per layar berarti menyalin ulang 5 MB setiap kali pemain
     // berpindah tab lalu kembali ke peta.
-    ..registerSingleton<BasemapService>(BasemapService());
+    ..registerSingleton<BasemapService>(BasemapService())
+    // Singleton: memegang unduhan model yang sedang berjalan, agar tokoh yang
+    // sama tidak diunduh dua kali; dan jawaban ARCore cukup ditanya sekali.
+    ..registerSingleton<ModelCache>(ModelCache())
+    ..registerSingleton<ArCapability>(ArCapability());
 
   // ── Jaringan ──────────────────────────────────────────────────
   // Interceptor perlu memberi tahu AuthCubit saat sesi berakhir, sementara

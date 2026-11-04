@@ -110,7 +110,17 @@ class _ScannerViewState extends State<_ScannerView> {
           // diri. Penyegaran profil dipicu di halaman penemuan, bukan di sini,
           // supaya emisi state-nya tidak berbenturan dengan navigasi ini.
           sl<ScanResultHolder>().save(result);
-          context.pushReplacement(AppRoutes.discoveryResult);
+          // Tokoh yang punya model 3D langsung dihadirkan dalam AR beserta
+          // penjelasannya; layar hadiah menyusul dari sana. Tanpa model,
+          // langsung ke layar hadiah seperti sebelumnya.
+          //
+          // pushReplacement juga yang melepas kamera pemindai: halaman ini
+          // dibuang, controller-nya di-dispose, dan kamera bebas untuk ARCore.
+          context.pushReplacement(
+            result.collectible.hasArModel
+                ? AppRoutes.discoveryAr
+                : AppRoutes.discoveryResult,
+          );
         },
         builder: (context, state) {
           return Stack(

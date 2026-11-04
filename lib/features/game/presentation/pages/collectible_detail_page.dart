@@ -102,6 +102,19 @@ class _CollectibleDetailPageState extends State<CollectibleDetailPage> {
                 // tanpanya, satu-satunya jalan menuju quiz hanyalah layar hasil
                 // scan — sekali terlewat, quiz-nya tidak bisa dikerjakan lagi.
                 if (collectible.isDiscovered) ...[
+                  if (collectible.hasArModel) ...[
+                    SizedBox(
+                      width: double.infinity,
+                      child: OutlinedButton.icon(
+                        onPressed: () => context.push(
+                          AppRoutes.collectibleAr(collectible.slug),
+                        ),
+                        icon: const Icon(Icons.view_in_ar_rounded, size: 20),
+                        label: const Text('Lihat dalam AR'),
+                      ),
+                    ),
+                    const SizedBox(height: 12),
+                  ],
                   SizedBox(
                     width: double.infinity,
                     child: ElevatedButton.icon(
