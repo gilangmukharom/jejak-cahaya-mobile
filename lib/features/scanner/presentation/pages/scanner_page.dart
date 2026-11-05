@@ -3,12 +3,15 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:go_router/go_router.dart';
+import 'package:image_picker/image_picker.dart';
 import 'package:mobile_scanner/mobile_scanner.dart';
 
 import '../../../../app/router/app_routes.dart';
 import '../../../../app/theme/app_colors.dart';
+import '../../../../core/config/app_config.dart';
 import '../../../../core/di/injection.dart';
 import '../../../../core/error/failures.dart';
+import '../../../../core/services/app_settings.dart';
 import '../../../../core/services/location_service.dart';
 import '../../../../core/services/scan_result_holder.dart';
 import '../../../game/data/game_repository.dart';
@@ -94,6 +97,55 @@ class _ScannerViewState extends State<_ScannerView> {
     context.read<ScannerCubit>().onQrDetected(payload);
   }
 
+  bool _pickingImage = false;
+
+  /// Alat develop: membaca QR dari gambar galeri, lalu menempuh jalur yang
+  /// sama persis dengan hasil kamera, termasuk validasi lokasi di server.
+  ///
+  /// Gambarnya cukup berkas PNG dari paket QR panel admin. Di emulator,
+  /// seret berkasnya ke jendela emulator (masuk ke Downloads) lalu pilih dari
+  /// sini.
+  Future<void> _scanFromImage() async {
+    final cubit = context.read<ScannerCubit>();
+    if (_pickingImage || cubit.state.isBusy) return;
+    final messenger = ScaffoldMessenger.of(context);
+
+    setState(() => _pickingImage = true);
+    try {
+      final image = await ImagePicker().pickImage(source: ImageSource.gallery);
+      if (image == null || !mounted) return;
+
+      final capture = await _controller.analyzeImage(
+        image.path,
+        formats: const [BarcodeFormat.qrCode],
+      );
+      final payload = capture?.barcodes
+          .map((barcode) => barcode.rawValue)
+          .whereType<String>()
+          .where((value) => value.isNotEmpty)
+          .firstOrNull;
+
+      if (!mounted) return;
+      if (payload == null) {
+        messenger.showSnackBar(const SnackBar(
+          content: Text('Tidak ada QR yang terbaca di gambar itu. '
+              'Pakai PNG dari paket QR panel admin.'),
+        ));
+        return;
+      }
+      // Tidak ditunggu: hasilnya mengalir lewat state cubit, sama seperti
+      // hasil kamera di _onDetect.
+      unawaited(cubit.onQrDetected(payload));
+    } on Object catch (error) {
+      if (!mounted) return;
+      messenger.showSnackBar(
+        SnackBar(content: Text('Gagal membaca gambar: $error')),
+      );
+    } finally {
+      if (mounted) setState(() => _pickingImage = false);
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -149,6 +201,17 @@ class _ScannerViewState extends State<_ScannerView> {
               // Tombol tutup berada di luar overlay: pemain harus selalu bisa
               // keluar, termasuk ketika kamera gagal atau masih menyiapkan diri.
               const _CloseButton(),
+              // Di luar overlay kamera dengan sengaja: di emulator kameranya
+              // sering gagal dibuka, dan justru di situ alat ini dibutuhkan.
+              if (AppConfig.devQrUpload && state.stage == ScannerStage.scanning)
+                _DevUploadButton(
+                  busy: _pickingImage,
+                  onPressed: _scanFromImage,
+                ),
+              // Mode Keluarga: pengingat keselamatan selama kamera terbuka.
+              if (sl<AppSettings>().familyMode &&
+                  state.stage == ScannerStage.scanning)
+                const _FamilySafetyBanner(),
               if (state.stage == ScannerStage.validating)
                 const _ValidatingOverlay(),
               if (state.stage == ScannerStage.rejected && state.failure != null)
@@ -238,6 +301,45 @@ class _ScannerOverlay extends StatelessWidget {
   }
 }
 
+/// Pengingat keselamatan Mode Keluarga, di bawah bingkai bidik.
+class _FamilySafetyBanner extends StatelessWidget {
+  const _FamilySafetyBanner();
+
+  @override
+  Widget build(BuildContext context) {
+    return Align(
+      alignment: Alignment.bottomCenter,
+      child: SafeArea(
+        child: Container(
+          margin: const EdgeInsets.fromLTRB(20, 0, 20, 24),
+          padding: const EdgeInsets.all(14),
+          decoration: BoxDecoration(
+            color: AppColors.surface,
+            borderRadius: BorderRadius.circular(16),
+            border: Border.all(color: AppColors.accent.withValues(alpha: 0.4)),
+          ),
+          child: const Row(
+            children: [
+              Icon(Icons.family_restroom_rounded, color: AppColors.accent),
+              SizedBox(width: 12),
+              Expanded(
+                child: Text(
+                  'Mode Keluarga: pindai bersama pendamping dewasa. Perhatikan '
+                  'jalan, dan jangan masuki area yang dipagari atau terlarang.',
+                  style: TextStyle(
+                      fontSize: 12,
+                      height: 1.4,
+                      color: AppColors.textSecondary),
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
 class _CloseButton extends StatelessWidget {
   const _CloseButton();
 
@@ -252,6 +354,87 @@ class _CloseButton extends StatelessWidget {
             onPressed: () => context.pop(),
             icon: const Icon(Icons.close_rounded, color: Colors.white),
             tooltip: 'Tutup',
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+/// Tombol alat develop "Unggah gambar QR", di tengah atas layar.
+///
+/// Diberi label DEV mencolok supaya tidak pernah disangka fitur pemain bila
+/// build develop sempat beredar.
+class _DevUploadButton extends StatelessWidget {
+  const _DevUploadButton({required this.busy, required this.onPressed});
+
+  final bool busy;
+  final VoidCallback onPressed;
+
+  @override
+  Widget build(BuildContext context) {
+    return SafeArea(
+      child: Align(
+        alignment: Alignment.topCenter,
+        child: Padding(
+          padding: const EdgeInsets.only(top: 8),
+          child: Material(
+            color: Colors.black.withValues(alpha: 0.55),
+            shape: const StadiumBorder(
+              side: BorderSide(color: AppColors.gold, width: 1.2),
+            ),
+            child: InkWell(
+              customBorder: const StadiumBorder(),
+              onTap: busy ? null : onPressed,
+              child: Padding(
+                padding: const EdgeInsets.fromLTRB(6, 6, 14, 6),
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Container(
+                      padding: const EdgeInsets.symmetric(
+                          horizontal: 7, vertical: 3),
+                      decoration: BoxDecoration(
+                        color: AppColors.gold,
+                        borderRadius: BorderRadius.circular(99),
+                      ),
+                      child: const Text(
+                        'DEV',
+                        style: TextStyle(
+                          fontSize: 10,
+                          fontWeight: FontWeight.w800,
+                          letterSpacing: 1,
+                          color: AppColors.primaryDark,
+                        ),
+                      ),
+                    ),
+                    const SizedBox(width: 8),
+                    if (busy)
+                      const SizedBox(
+                        width: 16,
+                        height: 16,
+                        child: CircularProgressIndicator(
+                          strokeWidth: 2,
+                          valueColor:
+                              AlwaysStoppedAnimation<Color>(AppColors.gold),
+                        ),
+                      )
+                    else
+                      const Icon(Icons.image_search_rounded,
+                          size: 18, color: Colors.white),
+                    const SizedBox(width: 6),
+                    const Text(
+                      'Unggah gambar QR',
+                      style: TextStyle(
+                        fontSize: 13,
+                        fontWeight: FontWeight.w700,
+                        color: Colors.white,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ),
           ),
         ),
       ),

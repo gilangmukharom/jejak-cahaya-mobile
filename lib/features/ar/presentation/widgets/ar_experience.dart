@@ -6,7 +6,9 @@ import 'package:flutter/services.dart';
 import '../../../../app/theme/app_colors.dart';
 import '../../../../core/di/injection.dart';
 import '../../../../core/models/collectible.dart';
+import '../../../../core/services/app_settings.dart';
 import '../../../../core/widgets/app_widgets.dart';
+import '../../../../core/widgets/narration_button.dart';
 import '../../data/ar_capability.dart';
 import '../../data/model_cache.dart';
 import 'model_3d_view.dart';
@@ -98,9 +100,12 @@ class _ArExperienceState extends State<ArExperience> {
       // menjawab, mis. saat Google Play Services for AR belum terpasang dan ia
       // masih bertanya ke Play Store. Lewat batas, tokohnya ditampilkan dalam
       // 3D: pemain tetap melihatnya, dan sakelar di atas masih bisa mencoba AR.
-      final supported = sl<ArCapability>()
-          .isSupported()
-          .timeout(_arCheckTimeout, onTimeout: () => false);
+      // Opsi tanpa AR (Pengaturan): langsung 3D, kamera tidak dinyalakan.
+      final supported = sl<AppSettings>().arEnabled
+          ? sl<ArCapability>()
+              .isSupported()
+              .timeout(_arCheckTimeout, onTimeout: () => false)
+          : Future<bool>.value(false);
 
       // Model bawaan dibaca langsung dari APK (seketika); selain itu diunduh.
       final source = await sl<ModelCache>().resolve(
@@ -156,7 +161,8 @@ class _ArExperienceState extends State<ArExperience> {
     });
     if (hasCameraFrame) _watchdog?.cancel();
     if (phase == 'CAMERA_ERROR') {
-      _fallBackTo3d('Kamera AR tidak bisa dimulai — tokoh ditampilkan dalam 3D.');
+      _fallBackTo3d(
+          'Kamera AR tidak bisa dimulai — tokoh ditampilkan dalam 3D.');
     }
   }
 
@@ -191,9 +197,8 @@ class _ArExperienceState extends State<ArExperience> {
   Widget build(BuildContext context) {
     final media = MediaQuery.of(context);
     final hasAction = widget.primaryAction != null;
-    final bottomChrome = _sheetPeek +
-        (hasAction ? _actionBarHeight : 0) +
-        media.padding.bottom;
+    final bottomChrome =
+        _sheetPeek + (hasAction ? _actionBarHeight : 0) + media.padding.bottom;
     final minSheet = (bottomChrome / media.size.height).clamp(0.15, 0.5);
 
     return Stack(
@@ -207,12 +212,14 @@ class _ArExperienceState extends State<ArExperience> {
           title: widget.collectible.name,
           onBack: widget.onBack,
           stage: _stage,
-          canToggle: _arSupported &&
-              (_stage == _Stage.ar || _stage == _Stage.model3d),
+          canToggle:
+              _arSupported && (_stage == _Stage.ar || _stage == _Stage.model3d),
           onToggle: _toggleMode,
         ),
         if (_stage == _Stage.ar)
           _placed ? const _PlacedChip() : _ArStatusChip(phase: _arPhase),
+        if (_stage == _Stage.ar && sl<AppSettings>().familyMode)
+          const _FamilySafetyChip(),
         DraggableScrollableSheet(
           initialChildSize: minSheet,
           minChildSize: minSheet,
@@ -297,6 +304,48 @@ class _ArExperienceState extends State<ArExperience> {
   }
 }
 
+/// Pengingat keselamatan Mode Keluarga — konsep produk: perlindungan anak dan
+/// tidak mendorong pemain memasuki area berbahaya atau terlarang.
+class _FamilySafetyChip extends StatelessWidget {
+  const _FamilySafetyChip();
+
+  @override
+  Widget build(BuildContext context) {
+    return Align(
+      alignment: Alignment.topCenter,
+      child: SafeArea(
+        child: Padding(
+          padding: const EdgeInsets.fromLTRB(24, 104, 24, 0),
+          child: Container(
+            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+            decoration: BoxDecoration(
+              color: AppColors.accent.withValues(alpha: 0.9),
+              borderRadius: BorderRadius.circular(999),
+            ),
+            child: const Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Icon(Icons.family_restroom_rounded,
+                    size: 16, color: Colors.white),
+                SizedBox(width: 8),
+                Flexible(
+                  child: Text(
+                    'Perhatikan sekitarmu & tetap bersama pendamping',
+                    style: TextStyle(
+                        color: Colors.white,
+                        fontSize: 12,
+                        fontWeight: FontWeight.w700),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
 /// Keterangan singkat tahap AR sebelum tokoh berdiri di lantai.
 ///
 /// Selain menuntun pemain, ini juga jalan cepat mendiagnosis di lapangan:
@@ -313,8 +362,11 @@ class _ArStatusChip extends StatelessWidget {
     final text = switch (phase) {
       'SCANNING' => 'Arahkan kamera ke lantai, gerakkan perlahan',
       'NO_SURFACE' => 'Lantai belum terlihat — cari tempat terang & bertekstur',
-      'TRACKING_LOST' || 'RECOVERING' => 'Arahkan kembali ke tempat tokoh berdiri',
-      'RECOVERY_FAILED' => 'Tokoh hilang dari pandangan — gerakkan ponsel perlahan',
+      'TRACKING_LOST' ||
+      'RECOVERING' =>
+        'Arahkan kembali ke tempat tokoh berdiri',
+      'RECOVERY_FAILED' =>
+        'Tokoh hilang dari pandangan — gerakkan ponsel perlahan',
       _ => 'Menyalakan kamera AR…',
     };
 
@@ -628,9 +680,8 @@ class _StorySheet extends StatelessWidget {
             .map((paragraph) => paragraph.trim())
             .where((paragraph) => paragraph.isNotEmpty)
             .toList();
-    final meta = [collectible.era, collectible.region]
-        .whereType<String>()
-        .join(' · ');
+    final meta =
+        [collectible.era, collectible.region].whereType<String>().join(' · ');
 
     return DecoratedBox(
       decoration: const BoxDecoration(
@@ -700,6 +751,16 @@ class _StorySheet extends StatelessWidget {
               height: 1.5,
             ),
           ),
+          if (story != null && story.trim().isNotEmpty) ...[
+            const SizedBox(height: 12),
+            Align(
+              alignment: Alignment.centerLeft,
+              child: NarrationButton(
+                id: collectible.slug,
+                text: '${collectible.name}. ${collectible.title ?? ''}. $story',
+              ),
+            ),
+          ],
           if (paragraphs.isNotEmpty) ...[
             const SizedBox(height: 22),
             Row(

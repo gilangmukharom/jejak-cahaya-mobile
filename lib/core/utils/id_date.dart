@@ -63,3 +63,7 @@ String formatCountdown(Duration remaining) {
   if (minutes > 0) return '$minutes menit $seconds detik';
   return '$seconds detik';
 }
+
+/// `5 Nov 2026` — tanggal ringkas untuk daftar riwayat.
+String formatShortDate(DateTime date) =>
+    '${date.day} ${_monthNames[date.month - 1].substring(0, 3)} ${date.year}';

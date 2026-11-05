@@ -30,26 +30,26 @@ class MissionsPage extends StatelessWidget {
 
     // Preferensi dipakai hanya sebagai cadangan, ketika halaman dibuka sebelum
     // pemeriksaan geofence pertama sempat menghasilkan jawaban.
-    final mosque = geofence.state.mosque;
-    final mosqueId = mosque?.id ?? sl<AppPreferences>().lastMosqueId;
+    final site = geofence.state.site;
+    final siteId = site?.id ?? sl<AppPreferences>().lastSiteId;
 
     return BlocProvider<MissionCubit>(
       create: (_) {
         final cubit =
             MissionCubit(sl<GameRepository>(), sl<ScanResultHolder>());
-        if (mosqueId != null) cubit.loadMissions(mosqueId);
+        if (siteId != null) cubit.loadMissions(siteId);
         return cubit;
       },
-      child: _MissionsView(mosqueId: mosqueId, mosqueName: mosque?.name),
+      child: _MissionsView(siteId: siteId, siteName: site?.name),
     );
   }
 }
 
 class _MissionsView extends StatelessWidget {
-  const _MissionsView({this.mosqueId, this.mosqueName});
+  const _MissionsView({this.siteId, this.siteName});
 
-  final String? mosqueId;
-  final String? mosqueName;
+  final String? siteId;
+  final String? siteName;
 
   @override
   Widget build(BuildContext context) {
@@ -63,7 +63,7 @@ class _MissionsView extends StatelessWidget {
             icon: const Icon(Icons.travel_explore_rounded),
           ),
         ],
-        bottom: mosqueName == null
+        bottom: siteName == null
             ? null
             : PreferredSize(
                 preferredSize: const Size.fromHeight(30),
@@ -71,12 +71,12 @@ class _MissionsView extends StatelessWidget {
                   padding: const EdgeInsets.fromLTRB(16, 0, 16, 10),
                   child: Row(
                     children: [
-                      const Icon(Icons.mosque_rounded,
+                      const Icon(Icons.travel_explore_rounded,
                           size: 15, color: AppColors.textMuted),
                       const SizedBox(width: 6),
                       Expanded(
                         child: Text(
-                          mosqueName!,
+                          siteName!,
                           maxLines: 1,
                           overflow: TextOverflow.ellipsis,
                           style: Theme.of(context)
@@ -90,9 +90,9 @@ class _MissionsView extends StatelessWidget {
                 ),
               ),
       ),
-      body: mosqueId == null
+      body: siteId == null
           ? EmptyView(
-              icon: Icons.mosque_outlined,
+              icon: Icons.account_balance_outlined,
               title: 'Lokasi belum dipilih',
               message:
                   'Pilih lokasi penjelajahan lebih dulu untuk melihat misinya.',
@@ -113,7 +113,7 @@ class _MissionsView extends StatelessWidget {
                   return FailureView(
                     failure: failure,
                     onRetry: () =>
-                        context.read<MissionCubit>().loadMissions(mosqueId!),
+                        context.read<MissionCubit>().loadMissions(siteId!),
                   );
                 }
 
@@ -122,13 +122,13 @@ class _MissionsView extends StatelessWidget {
                     icon: Icons.flag_outlined,
                     title: 'Belum ada misi',
                     message:
-                        'Pengurus masjid belum menyiapkan misi eksplorasi.',
+                        'Pengelola lokasi belum menyiapkan misi eksplorasi.',
                   );
                 }
 
                 return RefreshIndicator(
                   onRefresh: () =>
-                      context.read<MissionCubit>().loadMissions(mosqueId!),
+                      context.read<MissionCubit>().loadMissions(siteId!),
                   child: ListView.separated(
                     padding: const EdgeInsets.fromLTRB(16, 16, 16, 28),
                     itemCount: state.missions.length,

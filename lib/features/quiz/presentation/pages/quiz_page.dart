@@ -13,6 +13,7 @@ import '../../../../core/widgets/app_widgets.dart';
 import '../../../auth/presentation/cubit/auth_cubit.dart';
 import '../../../game/data/game_repository.dart';
 import '../cubit/quiz_cubit.dart';
+import '../../../rewards/presentation/widgets/points_badge.dart';
 
 /// Halaman pengerjaan quiz.
 ///
@@ -500,10 +501,14 @@ class _ResultViewState extends State<_ResultView> {
                     ),
                   ),
                 ),
+                if (result.pointsEarned > 0) ...[
+                  const SizedBox(height: 10),
+                  PointsEarnedChip(points: result.pointsEarned, onDark: false),
+                ],
               ] else if (passed) ...[
                 const SizedBox(height: 14),
                 Text(
-                  'XP untuk quiz ini sudah pernah Anda peroleh.',
+                  'XP dan poin untuk kuis ini sudah pernah kamu peroleh.',
                   textAlign: TextAlign.center,
                   style: theme.textTheme.bodySmall
                       ?.copyWith(color: AppColors.textMuted),

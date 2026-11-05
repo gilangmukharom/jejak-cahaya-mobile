@@ -95,7 +95,7 @@ class ExploreCubit extends Cubit<ExploreState> with SafeEmit<ExploreState> {
 
   StreamSubscription<PlayerPosition>? _positionSubscription;
   StreamSubscription<void>? _discoverySubscription;
-  String? _mosqueId;
+  String? _siteId;
 
   /// Jeda antar pengambilan ulang jarak checkpoint dari server.
   ///
@@ -115,8 +115,8 @@ class ExploreCubit extends Cubit<ExploreState> with SafeEmit<ExploreState> {
   static const Duration _syncInterval = Duration(seconds: 45);
   DateTime? _lastSyncAt;
 
-  Future<void> load(String mosqueId) async {
-    _mosqueId = mosqueId;
+  Future<void> load(String siteId) async {
+    _siteId = siteId;
     emit(state.copyWith(isLoading: true, clearFailure: true));
 
     try {
@@ -124,8 +124,8 @@ class ExploreCubit extends Cubit<ExploreState> with SafeEmit<ExploreState> {
           _location.lastKnown ?? await _location.getCurrentPosition();
 
       final (checkpoints, activeMission) = await (
-        _repository.fetchCheckpoints(mosqueId: mosqueId, position: position),
-        _repository.fetchActiveMission(mosqueId),
+        _repository.fetchCheckpoints(siteId: siteId, position: position),
+        _repository.fetchActiveMission(siteId),
       ).wait;
 
       _lastSyncAt = DateTime.now();
@@ -150,8 +150,8 @@ class ExploreCubit extends Cubit<ExploreState> with SafeEmit<ExploreState> {
   /// Menyegarkan setelah sebuah penemuan, agar checkpoint yang baru dipindai
   /// langsung berubah status dan progres misi ikut diperbarui.
   Future<void> refreshAfterDiscovery() async {
-    final mosqueId = _mosqueId;
-    if (mosqueId == null) return;
+    final siteId = _siteId;
+    if (siteId == null) return;
 
     _lastSyncAt = null;
     await _syncFromServer(_location.lastKnown);
@@ -221,15 +221,15 @@ class ExploreCubit extends Cubit<ExploreState> with SafeEmit<ExploreState> {
   }
 
   Future<void> _syncFromServer(PlayerPosition? position) async {
-    final mosqueId = _mosqueId;
-    if (mosqueId == null) return;
+    final siteId = _siteId;
+    if (siteId == null) return;
 
     _lastSyncAt = DateTime.now();
 
     try {
       final (checkpoints, activeMission) = await (
-        _repository.fetchCheckpoints(mosqueId: mosqueId, position: position),
-        _repository.fetchActiveMission(mosqueId),
+        _repository.fetchCheckpoints(siteId: siteId, position: position),
+        _repository.fetchActiveMission(siteId),
       ).wait;
 
       emit(

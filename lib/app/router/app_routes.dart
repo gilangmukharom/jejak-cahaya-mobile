@@ -14,16 +14,18 @@ class AppRoutes {
   static const String explore = '/explore';
   static const String collection = '/collection';
 
-  /// Tab Ibadah — jadwal sholat & arah kiblat.
+  /// Tab Reward Store — tukar NUSA POINTS dengan hadiah.
   ///
-  /// Menempati slot yang dulu dipakai Misi. Alasannya bukan bahwa Misi kurang
-  /// penting, melainkan bahwa Misi hanya berguna ketika pemain sedang berada di
-  /// masjid, sementara jadwal sholat berguna setiap hari di mana pun — dan
-  /// bilah bawah semestinya diisi hal-hal yang dicari orang paling sering.
-  /// Misi kini dijangkau dari bilah misi di atas peta dan dari halaman Profil.
-  static const String worship = '/ibadah';
-  static const String qibla = '/ibadah/kiblat';
-  static const String prayerSettings = '/ibadah/pengaturan';
+  /// Misi dijangkau dari bilah misi di atas peta dan dari halaman Profil.
+  static const String rewards = '/rewards';
+  static const String myRedemptions = '/rewards/penukaran';
+  static const String pointHistory = '/rewards/poin';
+
+  /// Tantangan harian & mingguan.
+  static const String challenges = '/tantangan';
+
+  /// Pengaturan Family & Accessibility.
+  static const String settings = '/pengaturan';
 
   static const String missions = '/missions';
   static const String profile = '/profile';

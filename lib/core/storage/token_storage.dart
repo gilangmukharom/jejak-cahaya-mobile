@@ -10,8 +10,8 @@ class TokenStorage {
 
   final FlutterSecureStorage _storage;
 
-  static const String _accessTokenKey = 'jc_access_token';
-  static const String _refreshTokenKey = 'jc_refresh_token';
+  static const String _accessTokenKey = 'nv_access_token';
+  static const String _refreshTokenKey = 'nv_refresh_token';
 
   /// Cache di memori agar interceptor tidak perlu menyentuh Keystore pada setiap
   /// permintaan — pembacaan secure storage relatif lambat (beberapa milidetik).

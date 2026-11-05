@@ -36,7 +36,7 @@ class ExplorePage extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final mosqueId = sl<AppPreferences>().lastMosqueId;
+    final siteId = sl<AppPreferences>().lastSiteId;
 
     return MultiBlocProvider(
       providers: [
@@ -51,7 +51,7 @@ class ExplorePage extends StatelessWidget {
               locationService: sl<LocationService>(),
               scanResults: sl<ScanResultHolder>(),
             );
-            if (mosqueId != null) cubit.load(mosqueId);
+            if (siteId != null) cubit.load(siteId);
             return cubit;
           },
         ),
@@ -82,10 +82,10 @@ class _ExploreViewState extends State<_ExploreView> {
       CheckpointDetailSheet.show(context, checkpoint);
 
   /// Masjid yang sedang dievaluasi, dari mana pun yang lebih dulu diketahui.
-  String? _mosqueIdOf(GeofenceState geofence) =>
-      geofence.mosque?.id ??
-      geofence.nearest?.mosque.id ??
-      sl<AppPreferences>().lastMosqueId;
+  String? _siteIdOf(GeofenceState geofence) =>
+      geofence.site?.id ??
+      geofence.nearest?.site.id ??
+      sl<AppPreferences>().lastSiteId;
 
   @override
   Widget build(BuildContext context) {
@@ -105,16 +105,16 @@ class _ExploreViewState extends State<_ExploreView> {
         // area, dan jawabannya tidak bisa ditampilkan pun kalau diberikan.
         listenWhen: (previous, current) =>
             previous.isUnlocked != current.isUnlocked ||
-            previous.mosque?.id != current.mosque?.id,
+            previous.site?.id != current.site?.id,
         listener: (context, geofence) {
-          final mosqueId = _mosqueIdOf(geofence);
-          if (geofence.isUnlocked && mosqueId != null) {
-            context.read<ExploreCubit>().load(mosqueId);
+          final siteId = _siteIdOf(geofence);
+          if (geofence.isUnlocked && siteId != null) {
+            context.read<ExploreCubit>().load(siteId);
           }
         },
         builder: (context, geofence) {
-          final mosqueId = _mosqueIdOf(geofence);
-          final mosque = geofence.mosque ?? geofence.nearest?.mosque;
+          final siteId = _siteIdOf(geofence);
+          final site = geofence.site ?? geofence.nearest?.site;
 
           return BlocBuilder<ExploreCubit, ExploreState>(
             builder: (context, state) {
@@ -134,9 +134,9 @@ class _ExploreViewState extends State<_ExploreView> {
                       checkpoints: isUnlocked ? state.checkpoints : const [],
                       position: position,
                       target: target,
-                      mosqueCenter: mosque == null
+                      siteCenter: site == null
                           ? null
-                          : LatLng(mosque.latitude, mosque.longitude),
+                          : LatLng(site.latitude, site.longitude),
                       onCheckpointTap: _openCheckpoint,
                       onFollowChanged: (following) {
                         if (following == _isFollowing) return;
@@ -150,10 +150,10 @@ class _ExploreViewState extends State<_ExploreView> {
                         state: geofence,
                         onRecheck: () =>
                             context.read<GeofenceCubit>().refresh(),
-                        onShowMosque: mosque == null
+                        onShowSite: site == null
                             ? null
                             : () => _mapKey.currentState?.focusOn(
-                                  LatLng(mosque.latitude, mosque.longitude),
+                                  LatLng(site.latitude, site.longitude),
                                 ),
                       ),
                     ),
@@ -186,8 +186,8 @@ class _ExploreViewState extends State<_ExploreView> {
                         state: state,
                         onCheckpointTap: _openCheckpoint,
                         onRefresh: () async {
-                          if (mosqueId != null) {
-                            await context.read<ExploreCubit>().load(mosqueId);
+                          if (siteId != null) {
+                            await context.read<ExploreCubit>().load(siteId);
                           }
                         },
                       ),
@@ -205,8 +205,8 @@ class _ExploreViewState extends State<_ExploreView> {
                       _LoadFailureOverlay(
                         message: state.failure!.message,
                         onRetry: () {
-                          if (mosqueId != null) {
-                            context.read<ExploreCubit>().load(mosqueId);
+                          if (siteId != null) {
+                            context.read<ExploreCubit>().load(siteId);
                           }
                         },
                       ),
@@ -280,7 +280,7 @@ class _TopHud extends StatelessWidget {
             // Permainan berjalan di banyak masjid sekarang, dan bilah misi
             // menjawab pertanyaan yang berbeda — "apa yang sedang saya
             // kerjakan", bukan "saya sedang di mana".
-            if (geofence.mosque != null) ...[
+            if (geofence.site != null) ...[
               _LocationChip(geofence: geofence),
               const SizedBox(height: 8),
             ],
@@ -364,8 +364,8 @@ class _LocationChip extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    final mosque = geofence.mosque;
-    if (mosque == null) return const SizedBox.shrink();
+    final site = geofence.site;
+    if (site == null) return const SizedBox.shrink();
 
     // Pemain sedang melihat lokasi yang ia pilih sendiri, bukan yang terdekat.
     // Perlu dikatakan: tanpa itu, layar yang menyatakan "di luar area" terbaca
@@ -382,7 +382,9 @@ class _LocationChip extends StatelessWidget {
           child: Row(
             children: [
               Icon(
-                isPinned ? Icons.push_pin_rounded : Icons.mosque_rounded,
+                isPinned
+                    ? Icons.push_pin_rounded
+                    : Icons.travel_explore_rounded,
                 size: 17,
                 color: isPinned ? AppColors.goldDark : AppColors.primary,
               ),
@@ -393,7 +395,7 @@ class _LocationChip extends StatelessWidget {
                   mainAxisSize: MainAxisSize.min,
                   children: [
                     Text(
-                      mosque.name,
+                      site.name,
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
                       style: theme.textTheme.bodyMedium
@@ -401,14 +403,13 @@ class _LocationChip extends StatelessWidget {
                     ),
                     Text(
                       isPinned
-                          ? 'Lokasi pilihan Anda · ketuk untuk ganti'
-                          : 'Lokasi terdekat · ketuk untuk lihat semua',
+                          ? 'NUSA WORLD · lokasi pilihanmu · ketuk untuk ganti'
+                          : 'NUSA WORLD · lokasi terdekat · ketuk untuk lihat semua',
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
                       style: theme.textTheme.labelSmall?.copyWith(
-                        color: isPinned
-                            ? AppColors.goldDark
-                            : AppColors.textMuted,
+                        color:
+                            isPinned ? AppColors.goldDark : AppColors.textMuted,
                       ),
                     ),
                   ],
@@ -660,7 +661,7 @@ class _CheckpointSheet extends StatelessWidget {
                                   child: Text(
                                     state.isAllDiscovered
                                         ? 'Seluruh checkpoint ditemukan'
-                                        : 'Checkpoint di Masjid',
+                                        : 'Titik Hero di Lokasi',
                                     style: theme.textTheme.titleMedium
                                         ?.copyWith(fontWeight: FontWeight.w800),
                                   ),

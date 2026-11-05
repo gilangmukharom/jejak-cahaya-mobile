@@ -23,7 +23,7 @@ class CoverageNotice extends StatelessWidget {
   const CoverageNotice({
     required this.state,
     required this.onRecheck,
-    this.onShowMosque,
+    this.onShowSite,
     super.key,
   });
 
@@ -33,7 +33,7 @@ class CoverageNotice extends StatelessWidget {
   final Future<void> Function() onRecheck;
 
   /// Membawa kamera peta ke masjid terdekat. Null bila peta tidak tersedia.
-  final VoidCallback? onShowMosque;
+  final VoidCallback? onShowSite;
 
   @override
   Widget build(BuildContext context) {
@@ -74,10 +74,10 @@ class CoverageNotice extends StatelessWidget {
               ),
               child: _NoticeCard(
                 nearest: nearest,
-                locationCount: state.mosques.length,
+                locationCount: state.sites.length,
                 isChecking: state.stage == GeofenceStage.locating,
                 onRecheck: onRecheck,
-                onShowMosque: onShowMosque,
+                onShowSite: onShowSite,
               ),
             ),
           ),
@@ -93,10 +93,10 @@ class _NoticeCard extends StatelessWidget {
     required this.locationCount,
     required this.isChecking,
     required this.onRecheck,
-    this.onShowMosque,
+    this.onShowSite,
   });
 
-  final NearestMosque? nearest;
+  final NearestSite? nearest;
 
   /// Berapa lokasi yang tersedia seluruhnya.
   ///
@@ -107,12 +107,12 @@ class _NoticeCard extends StatelessWidget {
 
   final bool isChecking;
   final Future<void> Function() onRecheck;
-  final VoidCallback? onShowMosque;
+  final VoidCallback? onShowSite;
 
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    final mosque = nearest?.mosque;
+    final site = nearest?.site;
 
     return Container(
       constraints: const BoxConstraints(maxWidth: 380),
@@ -153,9 +153,8 @@ class _NoticeCard extends StatelessWidget {
           ),
           const SizedBox(height: 8),
           Text(
-            'Checkpoint hanya muncul saat Anda berada di area masjid. '
-            'Fitur lain — jadwal sholat, arah kiblat, koleksi, misi — '
-            'tetap bisa dibuka dari mana saja.',
+            'Titik hero hanya muncul saat kamu berada di area lokasi bersejarah. '
+            'Hero Collection, Reward Store, dan misi tetap bisa dibuka dari mana saja.',
             textAlign: TextAlign.center,
             style: theme.textTheme.bodyMedium?.copyWith(
               color: AppColors.textSecondary,
@@ -163,10 +162,10 @@ class _NoticeCard extends StatelessWidget {
             ),
           ),
           const SizedBox(height: 18),
-          if (mosque != null)
-            _NearestMosqueTile(
+          if (site != null)
+            _NearestSiteTile(
               nearest: nearest!,
-              onShowMosque: onShowMosque,
+              onShowSite: onShowSite,
             )
           else
             _UnknownDistanceTile(isChecking: isChecking),
@@ -189,9 +188,9 @@ class _NoticeCard extends StatelessWidget {
               const SizedBox(width: 10),
               Expanded(
                 child: FilledButton.icon(
-                  onPressed: () => context.go(AppRoutes.worship),
-                  icon: const Icon(Icons.mosque_rounded, size: 18),
-                  label: const Text('Ibadah'),
+                  onPressed: () => context.go(AppRoutes.rewards),
+                  icon: const Icon(Icons.redeem_rounded, size: 18),
+                  label: const Text('Reward'),
                 ),
               ),
             ],
@@ -221,16 +220,16 @@ class _NoticeCard extends StatelessWidget {
 }
 
 /// Masjid terdekat yang bisa dimainkan, beserta sisa jaraknya.
-class _NearestMosqueTile extends StatelessWidget {
-  const _NearestMosqueTile({required this.nearest, this.onShowMosque});
+class _NearestSiteTile extends StatelessWidget {
+  const _NearestSiteTile({required this.nearest, this.onShowSite});
 
-  final NearestMosque nearest;
-  final VoidCallback? onShowMosque;
+  final NearestSite nearest;
+  final VoidCallback? onShowSite;
 
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    final mosque = nearest.mosque;
+    final site = nearest.site;
 
     // Yang ditampilkan adalah jarak sampai *tepi* area bermain, bukan sampai
     // titik tengah masjid. Selisihnya bisa 250 m — cukup besar untuk membuat
@@ -247,24 +246,24 @@ class _NearestMosqueTile extends StatelessWidget {
       child: Column(
         children: [
           Text(
-            'Masjid terdekat yang bisa dimainkan',
+            'Lokasi terdekat yang bisa dimainkan',
             textAlign: TextAlign.center,
             style: theme.textTheme.labelSmall
                 ?.copyWith(color: AppColors.textMuted),
           ),
           const SizedBox(height: 6),
           Text(
-            mosque.name,
+            site.name,
             textAlign: TextAlign.center,
             maxLines: 2,
             overflow: TextOverflow.ellipsis,
             style: theme.textTheme.titleMedium
                 ?.copyWith(fontWeight: FontWeight.w800),
           ),
-          if (mosque.city != null) ...[
+          if (site.city != null) ...[
             const SizedBox(height: 2),
             Text(
-              mosque.city!,
+              site.city!,
               style: theme.textTheme.bodySmall
                   ?.copyWith(color: AppColors.textSecondary),
             ),
@@ -301,16 +300,16 @@ class _NearestMosqueTile extends StatelessWidget {
           ),
           const SizedBox(height: 2),
           Text(
-            'Area bermain berjari-jari ${mosque.radiusMeters} m '
-            'dari titik masjid.',
+            'Area bermain berjari-jari ${site.radiusMeters} m '
+            'dari titik pusat lokasi.',
             textAlign: TextAlign.center,
             style: theme.textTheme.labelSmall
                 ?.copyWith(color: AppColors.textMuted),
           ),
-          if (onShowMosque != null) ...[
+          if (onShowSite != null) ...[
             const SizedBox(height: 8),
             TextButton.icon(
-              onPressed: onShowMosque,
+              onPressed: onShowSite,
               icon: const Icon(Icons.place_outlined, size: 18),
               label: const Text('Tunjukkan di peta'),
             ),
@@ -340,8 +339,8 @@ class _UnknownDistanceTile extends StatelessWidget {
       ),
       child: Text(
         isChecking
-            ? 'Mencari masjid terdekat…'
-            : 'Jarak ke masjid terdekat belum diketahui. Aktifkan lokasi lalu '
+            ? 'Mencari lokasi terdekat…'
+            : 'Jarak ke lokasi terdekat belum diketahui. Aktifkan GPS lalu '
                 'periksa ulang.',
         textAlign: TextAlign.center,
         style:

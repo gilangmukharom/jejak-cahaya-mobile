@@ -32,6 +32,7 @@ class CollectiblePortrait extends StatelessWidget {
     this.fit = BoxFit.contain,
     this.alignment = Alignment.center,
     this.iconSize = 56,
+    this.name,
     super.key,
   });
 
@@ -45,23 +46,37 @@ class CollectiblePortrait extends StatelessWidget {
   /// Ukuran ikon pengganti bila potretnya belum ada.
   final double iconSize;
 
-  static const Map<String, String> _assets = {
-    'bilal-bin-rabah': 'assets/characters/bilal-bin-rabah.webp',
-    'ibnu-battuta': 'assets/characters/ibnu-battuta.webp',
-    'ibnu-sina': 'assets/characters/ibnu-sina.webp',
-    'muhammad-al-fatih': 'assets/characters/muhammad-al-fatih.webp',
-    'salahuddin-al-ayyubi': 'assets/characters/salahuddin-al-ayyubi.webp',
-    'sunan-kalijaga': 'assets/characters/sunan-kalijaga.webp',
-  };
+  /// Nama pahlawan. Bila diisi dan potretnya belum ada, kartu menampilkan
+  /// monogram inisial bergaya Hero Card alih-alih ikon orang generik.
+  final String? name;
 
-  /// Dipakai pengujian untuk memastikan tiap slug pada seed punya potret.
+  ///
+  /// Kosong sejak rebrand NUSAVERSE: potret tokoh lama sudah dicabut, dan
+  /// potret pahlawan nasional belum dibuat — sampai ada, kartunya memakai
+  /// ikon. Menambah potret: lihat assets/characters/README.md.
+  static const Map<String, String> _assets = {};
+
   static bool hasPortrait(String slug) => _assets.containsKey(slug);
+
+  /// Seluruh berkas potret yang dipetakan — dipakai tes bundel.
+  @visibleForTesting
+  static Iterable<String> get mappedAssets => _assets.values;
 
   @override
   Widget build(BuildContext context) {
     final asset = _assets[slug];
 
     if (asset == null) {
+      final initials = _initials(name);
+      if (initials != null && type != CollectibleType.artifact) {
+        return Center(
+          child: _Monogram(
+            initials: initials,
+            color: AppColors.rarity(rarityValue),
+            size: iconSize * 1.5,
+          ),
+        );
+      }
       return Center(
         child: Icon(
           type == CollectibleType.artifact
@@ -81,6 +96,77 @@ class CollectiblePortrait extends StatelessWidget {
       // tepinya bergerigi saat diperkecil.
       filterQuality: FilterQuality.medium,
       semanticLabel: 'Ilustrasi $slug',
+    );
+  }
+
+  /// Inisial dua huruf dari nama, mengabaikan gelar seperti "Ir.", "dr.",
+  /// "Drs.", "Mr.", dan "R.A." — "Ir. Soekarno" → "S", "Mohammad Hatta" → "MH".
+  static String? _initials(String? name) {
+    if (name == null) return null;
+    final words = name
+        .split(RegExp(r'\s+'))
+        .where((w) => w.isNotEmpty && !w.endsWith('.'))
+        .toList();
+    if (words.isEmpty) return null;
+    final first = words.first.characters.first;
+    if (words.length == 1) return first.toUpperCase();
+    return (first + words.last.characters.first).toUpperCase();
+  }
+}
+
+/// Monogram Hero Card: inisial emas dalam cincin warna kelangkaan, dengan
+/// garis merah-putih di bawahnya — pengganti sementara ilustrasi pahlawan.
+class _Monogram extends StatelessWidget {
+  const _Monogram(
+      {required this.initials, required this.color, required this.size});
+
+  final String initials;
+  final Color color;
+  final double size;
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        Container(
+          width: size,
+          height: size,
+          decoration: BoxDecoration(
+            shape: BoxShape.circle,
+            gradient: const LinearGradient(
+              begin: Alignment.topLeft,
+              end: Alignment.bottomRight,
+              colors: [AppColors.primaryLight, AppColors.primaryDark],
+            ),
+            border: Border.all(color: color, width: size * 0.05),
+            boxShadow: [
+              BoxShadow(
+                  color: color.withValues(alpha: 0.35),
+                  blurRadius: size * 0.18),
+            ],
+          ),
+          alignment: Alignment.center,
+          child: Text(
+            initials,
+            style: TextStyle(
+              color: AppColors.gold,
+              fontSize: size * 0.36,
+              fontWeight: FontWeight.w900,
+              letterSpacing: 1,
+            ),
+          ),
+        ),
+        SizedBox(height: size * 0.08),
+        Container(
+          width: size * 0.42,
+          height: size * 0.07,
+          decoration: BoxDecoration(
+            gradient: AppColors.redWhite,
+            borderRadius: BorderRadius.circular(2),
+          ),
+        ),
+      ],
     );
   }
 }

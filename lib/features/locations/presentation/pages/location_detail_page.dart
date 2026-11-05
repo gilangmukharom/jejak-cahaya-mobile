@@ -6,7 +6,7 @@ import '../../../../app/router/app_routes.dart';
 import '../../../../app/theme/app_colors.dart';
 import '../../../../core/di/injection.dart';
 import '../../../../core/models/mission.dart';
-import '../../../../core/models/mosque.dart';
+import '../../../../core/models/site.dart';
 import '../../../../core/services/scan_result_holder.dart';
 import '../../../../core/utils/distance.dart';
 import '../../../../core/widgets/app_widgets.dart';
@@ -26,9 +26,9 @@ import '../widgets/progress_ring.dart';
 /// selalu milik satu masjid; yang berubah hanyalah dari layar mana masjid itu
 /// ditentukan.
 class LocationDetailPage extends StatelessWidget {
-  const LocationDetailPage({required this.mosqueId, super.key});
+  const LocationDetailPage({required this.siteId, super.key});
 
-  final String mosqueId;
+  final String siteId;
 
   @override
   Widget build(BuildContext context) {
@@ -38,47 +38,48 @@ class LocationDetailPage extends StatelessWidget {
         BlocProvider<MissionCubit>(
           create: (_) =>
               MissionCubit(sl<GameRepository>(), sl<ScanResultHolder>())
-                ..loadMissions(mosqueId),
+                ..loadMissions(siteId),
         ),
       ],
-      child: _LocationDetailView(mosqueId: mosqueId),
+      child: _LocationDetailView(siteId: siteId),
     );
   }
 }
 
 class _LocationDetailView extends StatelessWidget {
-  const _LocationDetailView({required this.mosqueId});
+  const _LocationDetailView({required this.siteId});
 
-  final String mosqueId;
+  final String siteId;
 
   @override
   Widget build(BuildContext context) {
     return BlocBuilder<GeofenceCubit, GeofenceState>(
       builder: (context, geofence) {
-        final mosque = _find(geofence);
+        final site = _find(geofence);
 
-        if (mosque == null) {
+        if (site == null) {
           return Scaffold(
             appBar: AppBar(title: const Text('Lokasi')),
             body: const LoadingView(message: 'Memuat lokasi…'),
           );
         }
 
-        final isCurrent = geofence.mosque?.id == mosque.id;
+        final isCurrent = geofence.site?.id == site.id;
 
         return Scaffold(
           backgroundColor: AppColors.cream,
           body: CustomScrollView(
             slivers: [
-              _Hero(mosque: mosque),
-              SliverToBoxAdapter(child: _ProgressCard(mosque: mosque)),
-              if (mosque.description != null &&
-                  mosque.description!.trim().isNotEmpty)
-                SliverToBoxAdapter(child: _About(text: mosque.description!)),
-              const SliverToBoxAdapter(child: _SectionTitle('Misi di lokasi ini')),
+              _Hero(site: site),
+              SliverToBoxAdapter(child: _ProgressCard(site: site)),
+              if (site.description != null &&
+                  site.description!.trim().isNotEmpty)
+                SliverToBoxAdapter(child: _About(text: site.description!)),
+              const SliverToBoxAdapter(
+                  child: _SectionTitle('Misi di lokasi ini')),
               const _MissionSliver(),
               SliverToBoxAdapter(
-                child: _PlayButton(mosque: mosque, isCurrent: isCurrent),
+                child: _PlayButton(site: site, isCurrent: isCurrent),
               ),
             ],
           ),
@@ -87,23 +88,23 @@ class _LocationDetailView extends StatelessWidget {
     );
   }
 
-  Mosque? _find(GeofenceState state) {
-    for (final mosque in state.mosques) {
-      if (mosque.id == mosqueId) return mosque;
+  Site? _find(GeofenceState state) {
+    for (final site in state.sites) {
+      if (site.id == siteId) return site;
     }
     return null;
   }
 }
 
 class _Hero extends StatelessWidget {
-  const _Hero({required this.mosque});
+  const _Hero({required this.site});
 
-  final Mosque mosque;
+  final Site site;
 
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    final isInside = mosque.isInside == true;
+    final isInside = site.isInside == true;
 
     return SliverAppBar(
       pinned: true,
@@ -121,7 +122,7 @@ class _Hero extends StatelessWidget {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Text(
-                    mosque.name,
+                    site.name,
                     maxLines: 2,
                     overflow: TextOverflow.ellipsis,
                     style: theme.textTheme.headlineSmall?.copyWith(
@@ -131,7 +132,7 @@ class _Hero extends StatelessWidget {
                   ),
                   const SizedBox(height: 6),
                   Text(
-                    mosque.address ?? mosque.placeLabel,
+                    site.address ?? site.placeLabel,
                     style: theme.textTheme.bodySmall?.copyWith(
                       color: AppColors.textOnDark.withValues(alpha: 0.7),
                     ),
@@ -166,9 +167,9 @@ class _Hero extends StatelessWidget {
                           Text(
                             isInside
                                 ? 'Anda berada di area ini'
-                                : mosque.distanceM == null
+                                : site.distanceM == null
                                     ? 'Jarak belum diketahui'
-                                    : '${formatDistance(mosque.distanceM!)} dari sini',
+                                    : '${formatDistance(site.distanceM!)} dari sini',
                             style: const TextStyle(
                               fontSize: 12,
                               fontWeight: FontWeight.w700,
@@ -190,14 +191,14 @@ class _Hero extends StatelessWidget {
 }
 
 class _ProgressCard extends StatelessWidget {
-  const _ProgressCard({required this.mosque});
+  const _ProgressCard({required this.site});
 
-  final Mosque mosque;
+  final Site site;
 
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    final progress = mosque.progress;
+    final progress = site.progress;
 
     return Container(
       margin: const EdgeInsets.fromLTRB(16, 16, 16, 0),
@@ -212,7 +213,7 @@ class _ProgressCard extends StatelessWidget {
           ProgressRing(
             value: progress?.fraction ?? 0,
             label: progress == null
-                ? '0/${mosque.checkpointCount}'
+                ? '0/${site.checkpointCount}'
                 : '${progress.discoveredCheckpoints}/${progress.totalCheckpoints}',
             size: 72,
             isComplete: progress?.isCompleted ?? false,
@@ -236,7 +237,7 @@ class _ProgressCard extends StatelessWidget {
                 const SizedBox(height: 6),
                 Text(
                   progress == null
-                      ? '${mosque.checkpointCount} titik · ${mosque.missionCount} misi'
+                      ? '${site.checkpointCount} titik · ${site.missionCount} misi'
                       : '${progress.completedMissions}/${progress.totalMissions} misi selesai'
                           '${progress.xpEarned > 0 ? ' · ${progress.xpEarned} XP dari lokasi ini' : ''}',
                   style: theme.textTheme.bodySmall?.copyWith(
@@ -361,7 +362,8 @@ class _MissionRow extends StatelessWidget {
       curve: Curves.easeOut,
       builder: (context, t, child) => Opacity(
         opacity: t,
-        child: Transform.translate(offset: Offset(0, 10 * (1 - t)), child: child),
+        child:
+            Transform.translate(offset: Offset(0, 10 * (1 - t)), child: child),
       ),
       child: Material(
         color: Colors.transparent,
@@ -426,8 +428,7 @@ class _MissionRow extends StatelessWidget {
                               value: value,
                               minHeight: 5,
                               backgroundColor: AppColors.surfaceMuted,
-                              valueColor:
-                                  AlwaysStoppedAnimation<Color>(accent),
+                              valueColor: AlwaysStoppedAnimation<Color>(accent),
                             ),
                           ),
                         ),
@@ -458,14 +459,14 @@ class _MissionRow extends StatelessWidget {
 /// bekerja — peta menampilkan lokasi beserta sisa jaraknya — tetapi tidak
 /// menjanjikan permainan yang terbuka, karena Layer 1 tetap berlaku.
 class _PlayButton extends StatelessWidget {
-  const _PlayButton({required this.mosque, required this.isCurrent});
+  const _PlayButton({required this.site, required this.isCurrent});
 
-  final Mosque mosque;
+  final Site site;
   final bool isCurrent;
 
   @override
   Widget build(BuildContext context) {
-    final isInside = mosque.isInside == true;
+    final isInside = site.isInside == true;
 
     return Padding(
       padding: const EdgeInsets.fromLTRB(16, 24, 16, 36),
@@ -473,7 +474,7 @@ class _PlayButton extends StatelessWidget {
         width: double.infinity,
         child: FilledButton.icon(
           onPressed: () async {
-            await context.read<GeofenceCubit>().selectMosque(mosque.id);
+            await context.read<GeofenceCubit>().selectSite(site.id);
             if (!context.mounted) return;
             context.go(AppRoutes.explore);
           },

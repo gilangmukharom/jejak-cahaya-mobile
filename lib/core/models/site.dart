@@ -12,8 +12,8 @@ import 'json_utils.dart';
 ///
 /// Null ketika permintaannya tidak membawa token; layar daftar lokasi tetap
 /// bisa digambar untuk tamu, hanya tanpa angka kemajuan.
-class MosqueProgress extends Equatable {
-  const MosqueProgress({
+class SiteProgress extends Equatable {
+  const SiteProgress({
     required this.totalCheckpoints,
     required this.discoveredCheckpoints,
     required this.totalMissions,
@@ -45,7 +45,7 @@ class MosqueProgress extends Equatable {
   int get remainingCheckpoints =>
       (totalCheckpoints - discoveredCheckpoints).clamp(0, totalCheckpoints);
 
-  factory MosqueProgress.fromJson(Map<String, dynamic> json) => MosqueProgress(
+  factory SiteProgress.fromJson(Map<String, dynamic> json) => SiteProgress(
         totalCheckpoints: Json.integer(json['totalCheckpoints'], 0),
         discoveredCheckpoints: Json.integer(json['discoveredCheckpoints'], 0),
         totalMissions: Json.integer(json['totalMissions'], 0),
@@ -67,8 +67,8 @@ class MosqueProgress extends Equatable {
       ];
 }
 
-class Mosque extends Equatable {
-  const Mosque({
+class Site extends Equatable {
+  const Site({
     required this.id,
     required this.slug,
     required this.name,
@@ -119,12 +119,12 @@ class Mosque extends Equatable {
   final bool enforceRadius;
 
   /// Kemajuan pemain di lokasi ini. Null untuk tamu yang belum login.
-  final MosqueProgress? progress;
+  final SiteProgress? progress;
 
   /// Alamat ringkas untuk kartu — kota bila ada, jatuh ke alamat lalu slug.
   String get placeLabel => city ?? address ?? slug;
 
-  factory Mosque.fromJson(Map<String, dynamic> json) => Mosque(
+  factory Site.fromJson(Map<String, dynamic> json) => Site(
         id: Json.str(json['id']),
         slug: Json.str(json['slug']),
         name: Json.str(json['name']),
@@ -153,7 +153,7 @@ class Mosque extends Equatable {
             : true,
         progress: json['progress'] == null
             ? null
-            : MosqueProgress.fromJson(Json.map(json['progress'])),
+            : SiteProgress.fromJson(Json.map(json['progress'])),
       );
 
   /// Salinan dengan jarak yang dihitung ulang di perangkat.
@@ -162,7 +162,7 @@ class Mosque extends Equatable {
   /// merapat mengikuti langkah, alih-alih melompat setiap kali server sempat
   /// ditanya. Rumusnya sama dengan yang dipakai server, jadi tidak akan
   /// berselisih dengan jawaban resminya.
-  Mosque withDistance(double meters) => Mosque(
+  Site withDistance(double meters) => Site(
         id: id,
         slug: slug,
         name: name,
@@ -207,7 +207,7 @@ class GeofenceStatus extends Equatable {
     required this.isInside,
     required this.distanceM,
     required this.radiusMeters,
-    required this.mosque,
+    required this.site,
   });
 
   final bool isInside;
@@ -215,20 +215,20 @@ class GeofenceStatus extends Equatable {
   /// Jarak sebenarnya ke pusat masjid, dalam meter.
   final double distanceM;
   final int radiusMeters;
-  final Mosque mosque;
+  final Site site;
 
   factory GeofenceStatus.fromJson(Map<String, dynamic> json) => GeofenceStatus(
         isInside: Json.boolean(json['isInside']),
         distanceM: Json.decimal(json['distanceM']),
         radiusMeters: Json.integer(json['radiusMeters'], 250),
-        mosque: Mosque.fromJson(Json.map(json['mosque'])),
+        site: Site.fromJson(Json.map(json['site'])),
       );
 
   /// Berapa jauh lagi pemain harus berjalan agar masuk area, dalam meter.
-  double get metersToEnter => mosque.enforceRadius
+  double get metersToEnter => site.enforceRadius
       ? (distanceM - radiusMeters).clamp(0, double.infinity)
       : 0;
 
   @override
-  List<Object?> get props => [isInside, distanceM, radiusMeters, mosque];
+  List<Object?> get props => [isInside, distanceM, radiusMeters, site];
 }

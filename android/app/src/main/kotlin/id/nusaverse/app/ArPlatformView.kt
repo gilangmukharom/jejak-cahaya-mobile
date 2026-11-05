@@ -1,4 +1,4 @@
-package id.jejakcahaya.jejak_cahaya
+package id.nusaverse.app
 
 import android.content.Context
 import android.content.ContextWrapper
@@ -139,7 +139,7 @@ class ArPlatformView(
     }
 
     companion object {
-        const val VIEW_TYPE = "id.jejakcahaya/ar_view"
+        const val VIEW_TYPE = "id.nusaverse/ar_view"
         private const val TAG = "JejakAr"
     }
 }

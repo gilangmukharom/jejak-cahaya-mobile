@@ -80,7 +80,7 @@ class _ArViewerPageState extends State<ArViewerPage> {
           icon: Icons.view_in_ar_rounded,
           title: 'Belum bisa dilihat dalam AR',
           message:
-              'Temukan tokoh ini di checkpoint masjid untuk menghadirkannya di sekitarmu.',
+              'Temukan hero ini di lokasi bersejarahnya untuk menghadirkannya di sekitarmu.',
         ),
       );
     }

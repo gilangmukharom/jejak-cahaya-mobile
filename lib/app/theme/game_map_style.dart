@@ -36,7 +36,7 @@ class GameMapStyle {
   // Dituliskan sebagai konstanta agar bisa disetel ulang di satu tempat.
   // Nuansanya sengaja digeser sedikit lebih hangat dan lebih tua daripada
   // Pokémon GO supaya duduk berdampingan dengan hijau tua & emas identitas
-  // Jejak Cahaya, alih-alih bertabrakan dengannya.
+  // NUSAVERSE, alih-alih bertabrakan dengannya.
 
   /// Rumput — warna dasar seluruh daratan.
   static const String _grass = '#a4d9a2';

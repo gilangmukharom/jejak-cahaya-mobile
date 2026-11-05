@@ -40,7 +40,11 @@ class ArDiscoveryPage extends StatelessWidget {
             child: ElevatedButton.icon(
               onPressed: () => _continue(context),
               icon: const Icon(Icons.card_giftcard_rounded, size: 20),
-              label: Text('Klaim +${result.xpEarned} XP & Lanjut'),
+              label: Text(
+                result.points.total > 0
+                    ? 'Klaim +${result.xpEarned} XP & ${result.points.total} Poin'
+                    : 'Klaim +${result.xpEarned} XP & Lanjut',
+              ),
               style: ElevatedButton.styleFrom(
                 backgroundColor: AppColors.gold,
                 foregroundColor: AppColors.primaryDark,

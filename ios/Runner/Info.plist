@@ -13,11 +13,9 @@
 	     yang tidak dipakai justru membuat App Review menanyakan pemakaian
 	     yang memang tidak ada. -->
 	<key>NSLocationWhenInUseUsageDescription</key>
-	<string>Nusaverse memerlukan lokasi Anda untuk memastikan Anda berada di area masjid dan mendeteksi checkpoint tokoh di sekitar Anda.</string>
+	<string>Nusaverse memerlukan lokasimu untuk memastikan kamu berada di lokasi bersejarah dan mendeteksi titik hero di sekitarmu.</string>
 	<key>NSCameraUsageDescription</key>
-	<string>Kamera digunakan untuk memindai QR Code di setiap checkpoint agar tokoh Islam dapat ditemukan.</string>
-	<key>NSMotionUsageDescription</key>
-	<string>Sensor gerak dan magnet digunakan untuk menunjukkan arah kiblat pada kompas.</string>
+	<string>Kamera digunakan untuk memindai QR Code di setiap checkpoint dan menghadirkan pahlawan Nusantara lewat AR.</string>
 
 	<key>CADisableMinimumFrameDurationOnPhone</key>
 	<true/>

@@ -29,7 +29,7 @@ if (hasReleaseKeystore) {
 }
 
 android {
-    namespace = "id.jejakcahaya.jejak_cahaya"
+    namespace = "id.nusaverse.app"
     // 37, bukan `flutter.compileSdkVersion` (36): SceneView 4.x — mesin AR
     // tokoh — menyatakan minCompileSdk 37 di metadata AAR-nya, dan build
     // menolak berjalan di bawahnya. compileSdk hanya menentukan API yang boleh
@@ -56,7 +56,7 @@ android {
 
     defaultConfig {
         // TODO: Specify your own unique Application ID (https://developer.android.com/studio/build/application-id.html).
-        applicationId = "id.jejakcahaya.jejak_cahaya"
+        applicationId = "id.nusaverse.app"
         // You can update the following values to match your application needs.
         // For more information, see: https://flutter.dev/to/review-gradle-config.
         minSdk = flutter.minSdkVersion

@@ -85,6 +85,12 @@ class PlayerPosition {
 /// menyediakan koordinat yang jujur — termasuk melaporkan `isMocked` apa adanya
 /// alih-alih menyembunyikannya.
 class LocationService {
+  LocationService({bool Function()? batterySaver})
+      : _batterySaver = batterySaver ?? (() => false);
+
+  /// Dibaca setiap kali aliran posisi dimulai — lihat [restartTracking].
+  final bool Function() _batterySaver;
+
   StreamSubscription<Position>? _subscription;
   final StreamController<PlayerPosition> _controller =
       StreamController<PlayerPosition>.broadcast();
@@ -97,6 +103,7 @@ class LocationService {
   /// Aliran pembaruan posisi. Mulai memancarkan setelah [startTracking].
   Stream<PlayerPosition> get positionStream => _controller.stream;
 
+  /// Untuk posisi sekali-ambil saat memindai: selalu akurasi terbaik.
   LocationSettings get _settings => const LocationSettings(
         // `best` menguras baterai lebih cepat, tetapi radius checkpoint hanya
         // 25 m — akurasi sedang membuat pemain tertolak padahal sudah berdiri
@@ -104,6 +111,25 @@ class LocationService {
         accuracy: LocationAccuracy.best,
         distanceFilter: AppConfig.locationDistanceFilterM,
       );
+
+  /// Untuk aliran posisi peta & radar. Mode hemat baterai memperbarui lebih
+  /// jarang dengan akurasi sedikit lebih rendah — cukup untuk mengarahkan
+  /// pemain; validasi scan tetap memakai [_settings] yang akurat.
+  LocationSettings get _streamSettings => _batterySaver()
+      ? const LocationSettings(
+          accuracy: LocationAccuracy.high,
+          distanceFilter: AppConfig.batterySaverDistanceFilterM,
+        )
+      : _settings;
+
+  /// Memulai ulang aliran posisi agar setelan baru (mis. mode hemat baterai)
+  /// langsung berlaku. Tidak melakukan apa-apa bila aliran belum berjalan.
+  Future<void> restartTracking() async {
+    if (_subscription == null) return;
+    await _subscription!.cancel();
+    _subscription = null;
+    await startTracking();
+  }
 
   /// Memastikan layanan lokasi menyala dan izin sudah diberikan.
   ///
@@ -166,7 +192,7 @@ class LocationService {
     await ensurePermission();
 
     _subscription =
-        Geolocator.getPositionStream(locationSettings: _settings).listen(
+        Geolocator.getPositionStream(locationSettings: _streamSettings).listen(
       (position) {
         final result = PlayerPosition.fromGeolocator(position);
         _lastKnown = result;

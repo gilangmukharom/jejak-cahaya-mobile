@@ -10,7 +10,7 @@ class ArCapability {
   ArCapability({MethodChannel? channel})
       : _channel = channel ?? const MethodChannel(channelName);
 
-  static const String channelName = 'id.jejakcahaya/ar_capability';
+  static const String channelName = 'id.nusaverse/ar_capability';
 
   final MethodChannel _channel;
   bool? _cached;

@@ -44,3 +44,7 @@ ios/Flutter/ephemeral/
 
 # Konfigurasi lokal
 .env
+
+# Cache Python dari launcher_icon/*.py
+__pycache__/
+*.pyc

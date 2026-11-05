@@ -1,79 +1,37 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:jejak_cahaya/core/models/enums.dart';
-import 'package:jejak_cahaya/core/widgets/collectible_portrait.dart';
+import 'package:nusaverse/core/models/enums.dart';
+import 'package:nusaverse/core/widgets/collectible_portrait.dart';
 
-/// Potret tokoh.
+/// Potret Hero Card.
 ///
 /// Semua yang diuji di sini gagal tanpa suara bila rusak. `Image.asset` yang
 /// menunjuk berkas tidak ada tidak melempar galat — ia hanya menyisakan ruang
-/// kosong di tengah kartu. Begitu pula slug yang salah eja: potretnya tidak
-/// hilang, melainkan diganti ikon, dan orang mengira memang belum ada gambarnya.
-
-/// Slug keenam tokoh pada data seed backend.
-///
-/// Ditulis ulang di sini dengan sengaja: bila slug di backend berubah, tes ini
-/// tetap lulus — tetapi daftar inilah yang menjadi catatan bahwa keduanya harus
-/// dijaga sejalan, dan pemeriksaan aset di bawah tetap menangkap berkas yang
-/// hilang atau salah nama.
-const seededSlugs = <String>[
-  'bilal-bin-rabah',
-  'ibnu-battuta',
-  'ibnu-sina',
-  'muhammad-al-fatih',
-  'salahuddin-al-ayyubi',
-  'sunan-kalijaga',
-];
-
+/// kosong di tengah kartu.
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
 
   group('CollectiblePortrait', () {
-    for (final slug in seededSlugs) {
-      test('$slug punya potret, dan berkasnya ada di bundel', () async {
-        expect(
-          CollectiblePortrait.hasPortrait(slug),
-          isTrue,
-          reason: 'slug "$slug" belum dipetakan ke berkas potret',
-        );
-
-        final data = await rootBundle.load('assets/characters/$slug.webp');
-        expect(data.lengthInBytes, greaterThan(1000));
-      });
-    }
-
-    testWidgets('memakai gambar untuk slug yang dikenal', (tester) async {
-      await tester.pumpWidget(
-        const MaterialApp(
-          home: SizedBox(
-            width: 200,
-            height: 200,
-            child: CollectiblePortrait(
-              slug: 'ibnu-battuta',
-              type: CollectibleType.character,
-              rarityValue: 'EPIC',
-            ),
-          ),
-        ),
-      );
-
-      expect(find.byType(Image), findsOneWidget);
-      expect(find.byType(Icon), findsNothing);
+    test('setiap potret yang dipetakan benar-benar ada di bundel', () async {
+      for (final asset in CollectiblePortrait.mappedAssets) {
+        final data = await rootBundle.load(asset);
+        expect(data.lengthInBytes, greaterThan(1000), reason: asset);
+      }
     });
 
-    testWidgets('jatuh ke ikon untuk slug yang tidak dikenal', (tester) async {
-      // Tokoh yang ditambahkan lewat panel admin belum punya potret. Yang
-      // penting: layarnya tetap utuh, bukan kosong.
+    testWidgets('pahlawan tanpa potret tetap tampil dengan ikon',
+        (tester) async {
+      // Pahlawan NUSAVERSE belum punya potret; kartunya tidak boleh kosong.
       await tester.pumpWidget(
         const MaterialApp(
           home: SizedBox(
             width: 200,
             height: 200,
             child: CollectiblePortrait(
-              slug: 'tokoh-yang-belum-ada-gambarnya',
+              slug: 'soekarno',
               type: CollectibleType.character,
-              rarityValue: 'COMMON',
+              rarityValue: 'LEGENDARY',
             ),
           ),
         ),
@@ -83,7 +41,34 @@ void main() {
       expect(find.byIcon(Icons.person_rounded), findsOneWidget);
     });
 
-    testWidgets('artefak memakai ikon museum, bukan ikon orang',
+    testWidgets('pahlawan bernama tanpa potret tampil sebagai monogram inisial',
+        (tester) async {
+      Future<void> pump(String name) => tester.pumpWidget(
+            MaterialApp(
+              home: SizedBox(
+                width: 200,
+                height: 200,
+                child: CollectiblePortrait(
+                  slug: 'x',
+                  name: name,
+                  type: CollectibleType.character,
+                  rarityValue: 'EPIC',
+                ),
+              ),
+            ),
+          );
+
+      // Gelar seperti "Drs." dan "Ir." diabaikan.
+      await pump('Drs. Mohammad Hatta');
+      expect(find.text('MH'), findsOneWidget);
+      await pump('Ir. Soekarno');
+      expect(find.text('S'), findsOneWidget);
+      await pump('R.A. Kartini');
+      expect(find.text('K'), findsOneWidget);
+      expect(find.byIcon(Icons.person_rounded), findsNothing);
+    });
+
+    testWidgets('situs bersejarah memakai ikon museum, bukan ikon orang',
         (tester) async {
       await tester.pumpWidget(
         const MaterialApp(
@@ -91,7 +76,7 @@ void main() {
             width: 200,
             height: 200,
             child: CollectiblePortrait(
-              slug: 'artefak-tanpa-gambar',
+              slug: 'situs-tanpa-gambar',
               type: CollectibleType.artifact,
               rarityValue: 'RARE',
             ),

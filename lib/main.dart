@@ -34,5 +34,5 @@ Future<void> main() async {
 
   await configureDependencies();
 
-  runApp(const JejakCahayaApp());
+  runApp(const NusaverseApp());
 }

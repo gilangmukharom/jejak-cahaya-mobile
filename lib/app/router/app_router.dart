@@ -25,10 +25,12 @@ import '../../features/mission/presentation/pages/missions_page.dart';
 import '../../features/profile/presentation/pages/achievements_page.dart';
 import '../../features/profile/presentation/pages/profile_page.dart';
 import '../../features/quiz/presentation/pages/quiz_page.dart';
+import '../../features/profile/presentation/pages/settings_page.dart';
+import '../../features/rewards/presentation/pages/challenges_page.dart';
+import '../../features/rewards/presentation/pages/my_redemptions_page.dart';
+import '../../features/rewards/presentation/pages/point_history_page.dart';
+import '../../features/rewards/presentation/pages/reward_store_page.dart';
 import '../../features/scanner/presentation/pages/scanner_page.dart';
-import '../../features/worship/presentation/pages/prayer_settings_page.dart';
-import '../../features/worship/presentation/pages/qibla_page.dart';
-import '../../features/worship/presentation/pages/worship_page.dart';
 import 'app_routes.dart';
 
 /// Merakit rute aplikasi.
@@ -91,8 +93,8 @@ class AppRouter {
           StatefulShellBranch(
             routes: [
               GoRoute(
-                path: AppRoutes.worship,
-                builder: (context, state) => const WorshipPage(),
+                path: AppRoutes.rewards,
+                builder: (context, state) => const RewardStorePage(),
               ),
             ],
           ),
@@ -109,15 +111,23 @@ class AppRouter {
 
       // Layar penuh di luar cangkang.
       GoRoute(
-        path: AppRoutes.qibla,
-        builder: (context, state) => const QiblaPage(),
+        path: AppRoutes.myRedemptions,
+        builder: (context, state) => const MyRedemptionsPage(),
       ),
       GoRoute(
-        path: AppRoutes.prayerSettings,
-        builder: (context, state) => const PrayerSettingsPage(),
+        path: AppRoutes.pointHistory,
+        builder: (context, state) => const PointHistoryPage(),
+      ),
+      GoRoute(
+        path: AppRoutes.challenges,
+        builder: (context, state) => const ChallengesPage(),
+      ),
+      GoRoute(
+        path: AppRoutes.settings,
+        builder: (context, state) => const SettingsPage(),
       ),
 
-      // Misi keluar dari cangkang saat tab-nya digantikan Ibadah. Dibuka lewat
+      // Misi berada di luar cangkang; slot tab-nya kini dipakai Reward Store. Dibuka lewat
       // `push` dari bilah misi di atas peta dan dari halaman Profil, sehingga
       // tombol kembali membawa pemain persis ke tempat ia menekannya.
       GoRoute(
@@ -136,7 +146,7 @@ class AppRouter {
       GoRoute(
         path: AppRoutes.locationDetailPattern,
         builder: (context, state) => LocationDetailPage(
-          mosqueId: state.pathParameters['id'] ?? '',
+          siteId: state.pathParameters['id'] ?? '',
         ),
       ),
 

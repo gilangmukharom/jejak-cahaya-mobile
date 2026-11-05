@@ -125,19 +125,14 @@ class _SplashPageState extends State<SplashPage> with TickerProviderStateMixin {
                             ),
                           );
                         },
-                        child: Container(
-                          width: 104,
-                          height: 104,
-                          decoration: BoxDecoration(
-                            shape: BoxShape.circle,
-                            color: Colors.black.withValues(alpha: 0.22),
-                            border: Border.all(color: AppColors.gold, width: 2),
-                          ),
-                          child: const Icon(
-                            Icons.mosque_rounded,
-                            size: 52,
-                            color: AppColors.gold,
-                          ),
+                        // Logo NUSAVERSE — marka yang sama dengan ikon
+                        // peluncur (launcher_icon/logo_concepts.py).
+                        child: Image.asset(
+                          'assets/images/nusaverse_logo.png',
+                          width: 150,
+                          height: 150,
+                          filterQuality: FilterQuality.medium,
+                          semanticLabel: 'Logo NUSAVERSE',
                         ),
                       ),
                     ),
@@ -163,11 +158,12 @@ class _SplashPageState extends State<SplashPage> with TickerProviderStateMixin {
                           ),
                           const SizedBox(height: 8),
                           Text(
-                            'ISLAMIC EXPLORER',
-                            style: theme.textTheme.labelLarge?.copyWith(
+                            AppConfig.appSlogan.toUpperCase(),
+                            textAlign: TextAlign.center,
+                            style: theme.textTheme.labelMedium?.copyWith(
                               color:
                                   AppColors.textOnDark.withValues(alpha: 0.7),
-                              letterSpacing: 3,
+                              letterSpacing: 1.6,
                             ),
                           ),
                         ],

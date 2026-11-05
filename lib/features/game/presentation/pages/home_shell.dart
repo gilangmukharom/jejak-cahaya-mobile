@@ -34,7 +34,7 @@ class _HomeShellState extends State<HomeShell> {
   // Kunci ini menandai tombol yang disorot penuntun sekali-jalan.
   final GlobalKey _scanKey = GlobalKey();
   final GlobalKey _collectionKey = GlobalKey();
-  final GlobalKey _worshipKey = GlobalKey();
+  final GlobalKey _rewardsKey = GlobalKey();
 
   @override
   void initState() {
@@ -55,22 +55,22 @@ class _HomeShellState extends State<HomeShell> {
             key: _scanKey,
             title: 'Tombol Pindai',
             description:
-                'Inilah satu-satunya cara memperoleh tokoh. Datangi checkpoint, '
-                'tekan tombol ini, lalu arahkan kamera ke QR di lokasi.',
+                'Inilah cara menemukan hero. Datangi titik hero di lokasi bersejarah, '
+                'tekan tombol ini, lalu arahkan kamera ke QR-nya.',
           ),
           CoachStep(
-            key: _worshipKey,
-            title: 'Ibadah',
+            key: _rewardsKey,
+            title: 'Reward Store',
             description:
-                'Jadwal sholat dan arah kiblat, dihitung dari lokasimu. '
-                'Terbuka di mana saja — tidak perlu berada di masjid.',
+                'Setiap hero, kuis, dan misi memberimu NUSA POINTS. Tukarkan '
+                'di sini dengan merchandise, voucher, dan tiket.',
           ),
           CoachStep(
             key: _collectionKey,
-            title: 'Koleksi',
+            title: 'Hero Collection',
             description:
-                'Tokoh yang sudah kamu temukan tersimpan di sini, lengkap '
-                'dengan kisah dan quiz-nya.',
+                'Hero Card yang sudah kamu temukan tersimpan di sini, lengkap '
+                'dengan biografi, kisah perjuangan, dan kuisnya.',
           ),
         ],
         onFinish: () => preferences.setOnboardingSeen(),
@@ -90,7 +90,7 @@ class _HomeShellState extends State<HomeShell> {
         navigationShell: widget.navigationShell,
         scanKey: _scanKey,
         collectionKey: _collectionKey,
-        worshipKey: _worshipKey,
+        rewardsKey: _rewardsKey,
       ),
     );
   }
@@ -111,19 +111,19 @@ class _BottomNavBar extends StatelessWidget {
     required this.navigationShell,
     required this.scanKey,
     required this.collectionKey,
-    required this.worshipKey,
+    required this.rewardsKey,
   });
 
   final StatefulNavigationShell navigationShell;
   final GlobalKey scanKey;
   final GlobalKey collectionKey;
-  final GlobalKey worshipKey;
+  final GlobalKey rewardsKey;
 
   static const double _barHeight = 68;
   static const double _bottomMargin = 10;
   static const double _sideMargin = 12;
 
-  /// Urutan branch pada router: 0 peta, 1 koleksi, 2 ibadah, 3 profil.
+  /// Urutan branch pada router: 0 peta, 1 koleksi, 2 reward store, 3 profil.
   static const List<_NavItem> _leftItems = [
     _NavItem(
         branch: 0,
@@ -141,9 +141,9 @@ class _BottomNavBar extends StatelessWidget {
   static const List<_NavItem> _rightItems = [
     _NavItem(
         branch: 2,
-        icon: Icons.mosque_outlined,
-        activeIcon: Icons.mosque_rounded,
-        label: 'Ibadah'),
+        icon: Icons.redeem_outlined,
+        activeIcon: Icons.redeem_rounded,
+        label: 'Reward'),
     _NavItem(
       branch: 3,
       icon: Icons.person_outline_rounded,
@@ -200,7 +200,7 @@ class _BottomNavBar extends StatelessWidget {
               for (final item in _rightItems)
                 Expanded(
                   child: _NavButton(
-                    key: item.branch == 2 ? worshipKey : null,
+                    key: item.branch == 2 ? rewardsKey : null,
                     item: item,
                     isSelected: navigationShell.currentIndex == item.branch,
                     onTap: () => _onTap(item.branch),
@@ -284,7 +284,7 @@ class _ScanButton extends StatelessWidget {
   Widget build(BuildContext context) {
     return Semantics(
       button: true,
-      label: 'Pindai QR checkpoint',
+      label: 'Pindai QR hero',
       child: InkWell(
         onTap: () => context.push(AppRoutes.scanner),
         borderRadius: BorderRadius.circular(18),

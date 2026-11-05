@@ -61,7 +61,7 @@ class _MissionDetailView extends StatelessWidget {
             return const EmptyView(
               icon: Icons.flag_outlined,
               title: 'Misi tidak ditemukan',
-              message: 'Misi ini mungkin sudah dinonaktifkan pengurus masjid.',
+              message: 'Misi ini mungkin sudah dinonaktifkan pengelola lokasi.',
             );
           }
 

@@ -1,5 +1,5 @@
-name: jejak_cahaya
-description: Nusaverse (Nusantara Universe) — Islamic Explorer. Permainan edukasi berbasis lokasi di area masjid.
+name: nusaverse
+description: NUSAVERSE (Nusantara Universe) — game edukasi berbasis lokasi untuk menemukan pahlawan Indonesia.
 publish_to: 'none'
 version: 1.0.4+5
 
@@ -89,35 +89,24 @@ dependencies:
   # Versi di-pin oleh flutter_localizations dari SDK — jangan naikkan sendiri.
   intl: ^0.20.2
 
-  # ── Ibadah: jadwal sholat & arah kiblat ───────────────────────
-  #
-  # Jadwalnya dihitung sendiri di perangkat (core/services/prayer_times_service),
-  # jadi tidak ada paket hisab di sini dan tidak ada API jadwal yang dipanggil.
-  # Yang dibutuhkan hanyalah tiga hal yang memang tidak bisa dikerjakan Dart
-  # murni: memasang alarm sistem, mengetahui zona waktu perangkat, dan membaca
-  # sensor magnet.
+  # ── Audio narasi ──────────────────────────────────────────────
+  # Kisah pahlawan dibacakan memakai mesin suara (TTS) bawaan ponsel dalam
+  # bahasa Indonesia: tanpa berkas audio yang diunduh, dan tetap jalan tanpa
+  # sinyal. Bagian dari fitur aksesibilitas pada konsep produk.
+  flutter_tts: ^4.2.5
 
-  # Pengingat waktu sholat dititipkan ke alarm sistem — aplikasi tidak berjalan
-  # di latar belakang menunggu jam empat pagi.
-  flutter_local_notifications: ^22.3.0
-
-  # Alarm dijadwalkan pada jam dinding setempat, bukan pada selisih durasi.
-  # Bedanya baru terlihat di zona berwaktu musim panas, tetapi di sanalah
-  # jadwal yang salah satu jam paling merugikan.
-  timezone: ^0.11.1
-  flutter_timezone: ^5.1.0
-
-  # Kompas kiblat dirakit dari akselerometer + magnetometer. Paket kompas siap
-  # pakai yang beredar sudah lama tidak dirawat dan tidak punya `namespace`,
-  # sehingga gagal dibangun pada Android Gradle Plugin yang dipakai proyek ini.
-  sensors_plus: ^7.1.0
-
-  # ── AR tokoh ──────────────────────────────────────────────────
+  # ── AR hero ───────────────────────────────────────────────────
   # AR-nya sendiri native (ARCore + SceneView, lihat android/app/build.gradle.kts
   # dan ArPlatformView.kt) — tidak ada paket Flutter AR yang masih dirawat dan
   # bisa dibangun untuk compileSdk 37. Paket ini hanya cadangan: menampilkan
   # tokoh sebagai model 3D yang bisa diputar di perangkat tanpa ARCore dan di iOS.
   model_viewer_plus: ^1.10.0
+
+  # Alat develop: memindai QR dari gambar galeri alih-alih kamera. Tombolnya
+  # hanya muncul bila AppConfig.devQrUpload aktif (debug, atau
+  # --dart-define=DEV_QR_UPLOAD=true). Android memakai Photo Picker sistem,
+  # jadi tidak ada izin penyimpanan yang ditambahkan.
+  image_picker: ^1.2.4
 
 dev_dependencies:
   flutter_test:
@@ -161,17 +150,11 @@ flutter:
   assets:
     - assets/images/
     - assets/icons/
-    # Potret tokoh. Disebut per berkas, bukan sebagai direktori: mendaftarkan
-    # `assets/characters/` ikut membundel README.md di sebelahnya ke dalam APK.
-    # Nama berkas = slug collectible di backend; pemetaannya ada di
-    # core/widgets/collectible_portrait.dart, dan ada tes yang memastikan
-    # keenamnya benar-benar terjangkau dari bundel.
-    - assets/characters/bilal-bin-rabah.webp
-    - assets/characters/ibnu-battuta.webp
-    - assets/characters/ibnu-sina.webp
-    - assets/characters/muhammad-al-fatih.webp
-    - assets/characters/salahuddin-al-ayyubi.webp
-    - assets/characters/sunan-kalijaga.webp
+    # Potret Hero Card. Daftarkan PER BERKAS, bukan sebagai direktori:
+    # mendaftarkan `assets/characters/` ikut membundel README.md ke dalam APK.
+    # Nama berkas = slug pahlawan di backend; pemetaannya ada di
+    # core/widgets/collectible_portrait.dart. Pahlawan tanpa potret tampil
+    # dengan ikon — belum ada potret pahlawan NUSAVERSE yang dibundel.
     - assets/animations/
     # Basemap vektor offline (Protomaps v4, turunan OpenStreetMap, ODbL).
     # Disebut per berkas, bukan sebagai direktori: mendaftarkan `assets/map/`

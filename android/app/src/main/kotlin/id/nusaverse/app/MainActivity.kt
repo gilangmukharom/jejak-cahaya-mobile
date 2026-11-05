@@ -1,4 +1,4 @@
-package id.jejakcahaya.jejak_cahaya
+package id.nusaverse.app
 
 import com.google.ar.core.ArCoreApk
 import io.flutter.embedding.android.FlutterFragmentActivity
@@ -59,6 +59,6 @@ class MainActivity : FlutterFragmentActivity() {
     }
 
     private companion object {
-        const val CAPABILITY_CHANNEL = "id.jejakcahaya/ar_capability"
+        const val CAPABILITY_CHANNEL = "id.nusaverse/ar_capability"
     }
 }

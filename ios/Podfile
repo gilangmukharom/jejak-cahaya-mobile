@@ -13,9 +13,8 @@
 
 # ── Versi iOS minimum ─────────────────────────────────────────────────
 #
-# 13.0, bukan angka yang lebih rendah, karena tiga plugin menuntutnya:
-# maplibre_gl (peta 3D), sensors_plus (kompas kiblat), dan
-# flutter_local_notifications (pengingat waktu sholat). Paket SPM yang
+# 13.0, bukan angka yang lebih rendah, karena maplibre_gl (peta 3D) dan
+# flutter_tts (audio narasi) menuntutnya. Paket SPM yang
 # dibangkitkan Flutter juga mendeklarasikan `.iOS("13.0")`; menurunkan angka
 # di sini hanya akan membuat keduanya bertengkar saat menaut.
 #

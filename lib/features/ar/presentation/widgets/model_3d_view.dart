@@ -36,7 +36,7 @@ class Model3dView extends StatefulWidget {
 }
 
 class _Model3dViewState extends State<Model3dView> {
-  static const String _channelName = 'JejakModel';
+  static const String _channelName = 'NusaverseModel';
 
   bool _loaded = false;
 

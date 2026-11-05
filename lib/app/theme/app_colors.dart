@@ -1,46 +1,67 @@
 import 'package:flutter/material.dart';
 
-/// Palet warna Jejak Cahaya.
+/// Palet warna NUSAVERSE.
 ///
-/// Hijau tua dan emas diambil dari identitas visual aplikasi — nuansa yang
-/// lazim pada arsitektur masjid, dan cukup gelap untuk menjaga keterbacaan peta
-/// di bawah sinar matahari langsung, kondisi utama saat aplikasi ini dipakai.
+/// Diturunkan dari identitas merek di konsep produk:
+///
+/// | Nama           | Kode      | Makna                              |
+/// | -------------- | --------- | ---------------------------------- |
+/// | Hero Red       | `#D92332` | Keberanian dan identitas nasional  |
+/// | Unity White    | `#F8F8F4` | Persatuan dan keterbukaan          |
+/// | Victory Gold   | `#F4B52B` | Prestasi dan reward                |
+/// | Nusa Navy      | `#17345E` | Teknologi dan kepercayaan          |
+/// | Explorer Green | `#20A67A` | Eksplorasi dan alam                |
+///
+/// Nama token lama (`primary`, `gold`, `cream`, …) dipertahankan agar seluruh
+/// layar ikut berganti warna tanpa disentuh satu per satu: `primary` kini
+/// Nusa Navy, `gold` kini Victory Gold, `cream` kini Unity White.
 class AppColors {
   const AppColors._();
 
-  // ── Warna utama ───────────────────────────────────────────────
-  static const Color primary = Color(0xFF0B3D2E);
-  static const Color primaryLight = Color(0xFF16624A);
-  static const Color primaryDark = Color(0xFF06251C);
+  // ── Warna merek ───────────────────────────────────────────────
+  static const Color heroRed = Color(0xFFD92332);
+  static const Color unityWhite = Color(0xFFF8F8F4);
+  static const Color victoryGold = Color(0xFFF4B52B);
+  static const Color nusaNavy = Color(0xFF17345E);
+  static const Color explorerGreen = Color(0xFF20A67A);
 
-  static const Color gold = Color(0xFFC9A24B);
-  static const Color goldLight = Color(0xFFE0C378);
-  static const Color goldDark = Color(0xFF9B7A2E);
+  // ── Warna utama ───────────────────────────────────────────────
+  static const Color primary = nusaNavy;
+  static const Color primaryLight = Color(0xFF2A5490);
+  static const Color primaryDark = Color(0xFF0F2340);
+
+  static const Color gold = victoryGold;
+  static const Color goldLight = Color(0xFFF8CD6A);
+  static const Color goldDark = Color(0xFFB9820F);
+
+  /// Aksen keberanian — tombol aksi penting dan penanda merah-putih.
+  static const Color accent = heroRed;
 
   // ── Permukaan ─────────────────────────────────────────────────
-  static const Color cream = Color(0xFFF6F2E9);
+  static const Color cream = unityWhite;
   static const Color surface = Color(0xFFFFFFFF);
-  static const Color surfaceMuted = Color(0xFFF0EBE0);
-  static const Color darkSurface = Color(0xFF0F1A16);
-  static const Color darkSurfaceElevated = Color(0xFF17251F);
+  static const Color surfaceMuted = Color(0xFFECEDE6);
+  static const Color darkSurface = Color(0xFF0B1729);
+  static const Color darkSurfaceElevated = Color(0xFF14243D);
 
   // ── Teks ──────────────────────────────────────────────────────
-  static const Color textPrimary = Color(0xFF1A211E);
-  static const Color textSecondary = Color(0xFF5A6560);
-  static const Color textMuted = Color(0xFF8E9793);
-  static const Color textOnDark = Color(0xFFF3F1EA);
+  static const Color textPrimary = Color(0xFF16202E);
+  static const Color textSecondary = Color(0xFF55606F);
+  static const Color textMuted = Color(0xFF8A93A0);
+  static const Color textOnDark = Color(0xFFF8F8F4);
 
   // ── Semantik ──────────────────────────────────────────────────
-  static const Color success = Color(0xFF2E7D5B);
-  static const Color warning = Color(0xFFD9902F);
-  static const Color danger = Color(0xFFC0392B);
+  static const Color success = explorerGreen;
+  static const Color warning = Color(0xFFE08A1E);
+  static const Color danger = heroRed;
   static const Color info = Color(0xFF2E6F8E);
 
-  // ── Kelangkaan kartu koleksi ──────────────────────────────────
-  static const Color rarityCommon = Color(0xFF6B7D74);
+  // ── Kelangkaan Hero Card ──────────────────────────────────────
+  // Mekanisme permainan, bukan ukuran jasa seorang pahlawan.
+  static const Color rarityCommon = Color(0xFF6B7785);
   static const Color rarityRare = Color(0xFF2D6DA3);
   static const Color rarityEpic = Color(0xFF7A4BA8);
-  static const Color rarityLegendary = Color(0xFFC9922B);
+  static const Color rarityLegendary = Color(0xFFE0A21C);
 
   /// Warna aksen untuk sebuah rarity. Menerima nilai enum backend
   /// (`COMMON`, `RARE`, `EPIC`, `LEGENDARY`).
@@ -71,5 +92,13 @@ class AppColors {
     begin: Alignment.centerLeft,
     end: Alignment.centerRight,
     colors: [goldDark, gold, goldLight],
+  );
+
+  /// Garis merah-putih — penanda identitas nasional pada kartu dan kepala layar.
+  static const LinearGradient redWhite = LinearGradient(
+    begin: Alignment.topCenter,
+    end: Alignment.bottomCenter,
+    colors: [heroRed, heroRed, unityWhite, unityWhite],
+    stops: [0, 0.5, 0.5, 1],
   );
 }

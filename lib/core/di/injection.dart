@@ -7,12 +7,14 @@ import '../../features/ar/data/model_cache.dart';
 import '../../features/auth/data/auth_repository.dart';
 import '../../features/auth/presentation/cubit/auth_cubit.dart';
 import '../../features/game/data/game_repository.dart';
+import '../../features/rewards/data/reward_repository.dart';
 import '../../features/game/presentation/cubit/geofence_cubit.dart';
 import '../network/api_client.dart';
 import '../network/dio_client.dart';
+import '../services/app_settings.dart';
 import '../services/basemap_service.dart';
 import '../services/location_service.dart';
-import '../services/prayer_notification_service.dart';
+import '../services/narration_service.dart';
 import '../services/scan_result_holder.dart';
 import '../storage/app_preferences.dart';
 import '../storage/token_storage.dart';
@@ -49,18 +51,16 @@ Future<void> configureDependencies() async {
         iOptions: IOSOptions(accessibility: KeychainAccessibility.first_unlock),
       ),
     )
-    ..registerSingleton<TokenStorage>(TokenStorage(sl<FlutterSecureStorage>()));
+    ..registerSingleton<TokenStorage>(TokenStorage(sl<FlutterSecureStorage>()))
+    ..registerSingleton<AppSettings>(AppSettings(preferences));
 
   // ── Layanan perangkat ─────────────────────────────────────────
   sl
-    ..registerSingleton<LocationService>(LocationService())
-    ..registerSingleton<ScanResultHolder>(ScanResultHolder())
-    // Jadwal sholat dihitung di perangkat; yang perlu dipegang lama hanyalah
-    // penjadwal alarmnya, yang menyiapkan basis data zona waktu dan saluran
-    // notifikasi sekali saja.
-    ..registerSingleton<PrayerNotificationService>(
-      PrayerNotificationService(sl<AppPreferences>()),
+    ..registerSingleton<LocationService>(
+      LocationService(batterySaver: () => sl<AppSettings>().batterySaver),
     )
+    ..registerLazySingleton<NarrationService>(NarrationService.new)
+    ..registerSingleton<ScanResultHolder>(ScanResultHolder())
     // Singleton karena arsip petanya hanya perlu disalin dan dibuka sekali:
     // membuatnya per layar berarti menyalin ulang 5 MB setiap kali pemain
     // berpindah tab lalu kembali ke peta.
@@ -97,7 +97,9 @@ Future<void> configureDependencies() async {
       ),
     )
     ..registerLazySingleton<GameRepository>(
-        () => GameRepository(sl<ApiClient>()));
+        () => GameRepository(sl<ApiClient>()))
+    ..registerLazySingleton<RewardRepository>(
+        () => RewardRepository(sl<ApiClient>()));
 
   // ── State global ──────────────────────────────────────────────
   sl

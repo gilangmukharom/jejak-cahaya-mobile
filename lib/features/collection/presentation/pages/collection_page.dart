@@ -65,7 +65,7 @@ class _CollectionViewState extends State<_CollectionView> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: const Text('Koleksi Saya')),
+      appBar: AppBar(title: const Text('Hero Collection')),
       body: BlocBuilder<CollectionCubit, CollectionState>(
         builder: (context, state) {
           if (state.isLoading && state.entries.isEmpty) {
@@ -97,7 +97,7 @@ class _CollectionViewState extends State<_CollectionView> {
                       icon: Icons.auto_stories_outlined,
                       title: 'Koleksi masih kosong',
                       message: state.categoryFilter == null
-                          ? 'Datangi checkpoint di area masjid lalu pindai QR untuk menemukan tokoh pertamamu.'
+                          ? 'Datangi lokasi bersejarah lalu pindai QR untuk menemukan hero pertamamu.'
                           : 'Belum ada tokoh dari kategori ini di koleksimu.',
                       action: state.categoryFilter == null
                           ? FilledButton.icon(
@@ -200,11 +200,11 @@ class _CategoryFilter extends StatelessWidget {
   final CollectibleCategory? selected;
 
   static const List<CollectibleCategory> _categories = [
-    CollectibleCategory.companion,
-    CollectibleCategory.scholar,
-    CollectibleCategory.explorer,
     CollectibleCategory.leader,
-    CollectibleCategory.nusantara,
+    CollectibleCategory.warrior,
+    CollectibleCategory.military,
+    CollectibleCategory.educator,
+    CollectibleCategory.movement,
     CollectibleCategory.artifact,
   ];
 
@@ -305,6 +305,7 @@ class _CollectionCard extends StatelessWidget {
                         padding: const EdgeInsets.fromLTRB(6, 10, 6, 0),
                         child: CollectiblePortrait(
                           slug: collectible.slug,
+                          name: collectible.name,
                           type: collectible.type,
                           rarityValue: rarityValue,
                         ),

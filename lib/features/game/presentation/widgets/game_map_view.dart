@@ -31,7 +31,7 @@ class GameMapView extends StatefulWidget {
     required this.checkpoints,
     required this.position,
     this.target,
-    this.mosqueCenter,
+    this.siteCenter,
     this.onCheckpointTap,
     this.onFollowChanged,
     super.key,
@@ -44,7 +44,7 @@ class GameMapView extends StatefulWidget {
   final Checkpoint? target;
 
   /// Dipakai sebagai pusat awal ketika GPS belum memberi kabar.
-  final LatLng? mosqueCenter;
+  final LatLng? siteCenter;
 
   final void Function(Checkpoint checkpoint)? onCheckpointTap;
 
@@ -176,7 +176,7 @@ class GameMapViewState extends State<GameMapView>
     final position = widget.position;
     final center = position != null
         ? LatLng(position.latitude, position.longitude)
-        : widget.mosqueCenter ??
+        : widget.siteCenter ??
             (widget.checkpoints.isNotEmpty
                 ? LatLng(
                     widget.checkpoints.first.latitude,

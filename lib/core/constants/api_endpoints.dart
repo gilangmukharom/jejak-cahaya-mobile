@@ -18,14 +18,14 @@ class ApiEndpoints {
   static const String myXpHistory = '/users/me/xp-history';
 
   // Masjid / lokasi permainan
-  static const String mosques = '/mosques';
+  static const String sites = '/sites';
 
   /// Lokasi terdekat dari posisi pemain — dipakai untuk memilih sendiri
   /// masjid mana yang dibuka, tanpa meminta pemain memilih apa pun.
-  static const String nearestMosque = '/mosques/nearest';
+  static const String nearestSite = '/sites/nearest';
 
-  static String mosque(String id) => '/mosques/$id';
-  static String geofence(String id) => '/mosques/$id/geofence';
+  static String site(String id) => '/sites/$id';
+  static String geofence(String id) => '/sites/$id/geofence';
 
   // Checkpoint
   static const String checkpoints = '/checkpoints';
@@ -55,6 +55,16 @@ class ApiEndpoints {
       '/quizzes/by-collectible/$collectibleId';
   static String submitQuiz(String id) => '/quizzes/$id/submit';
   static String quizAttempts(String id) => '/quizzes/$id/attempts';
+
+  // Reward Store & NUSA POINTS
+  static const String rewards = '/rewards';
+  static String redeemReward(String id) => '/rewards/$id/redeem';
+  static const String myRedemptions = '/rewards/redemptions';
+  static const String pointHistory = '/rewards/points';
+
+  // Tantangan harian & mingguan
+  static const String challenges = '/challenges';
+  static String claimChallenge(String id) => '/challenges/$id/claim';
 
   // Lainnya
   static const String leaderboard = '/leaderboard';

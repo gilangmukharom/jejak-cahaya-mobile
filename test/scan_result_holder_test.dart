@@ -1,6 +1,6 @@
 import 'package:flutter_test/flutter_test.dart';
-import 'package:jejak_cahaya/core/models/scan_result.dart';
-import 'package:jejak_cahaya/core/services/scan_result_holder.dart';
+import 'package:nusaverse/core/models/scan_result.dart';
+import 'package:nusaverse/core/services/scan_result_holder.dart';
 
 /// Mengunci perilaku yang memperbaiki bug "layar penemuan tertutup sendiri".
 ///

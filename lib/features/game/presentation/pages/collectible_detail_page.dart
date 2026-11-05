@@ -9,6 +9,7 @@ import '../../../../core/error/failures.dart';
 import '../../../../core/models/collectible.dart';
 import '../../../../core/widgets/app_widgets.dart';
 import '../../../../core/widgets/collectible_portrait.dart';
+import '../../../../core/widgets/narration_button.dart';
 import '../../data/game_repository.dart';
 
 /// Halaman kisah lengkap satu tokoh atau artefak.
@@ -93,9 +94,18 @@ class _CollectibleDetailPageState extends State<CollectibleDetailPage> {
                       ),
                 ),
                 const SizedBox(height: 28),
-                if (collectible.isDiscovered && collectible.story != null)
-                  _StoryBody(story: collectible.story!)
-                else
+                if (collectible.isDiscovered && collectible.story != null) ...[
+                  Align(
+                    alignment: Alignment.centerLeft,
+                    child: NarrationButton(
+                      id: collectible.slug,
+                      text: '${collectible.name}. ${collectible.title ?? ''}. '
+                          '${collectible.story}',
+                    ),
+                  ),
+                  const SizedBox(height: 20),
+                  _StoryBody(story: collectible.story!),
+                ] else
                   const _LockedStory(),
                 const SizedBox(height: 32),
                 // Quiz terbuka begitu tokohnya ditemukan. Tautan ini penting:
@@ -190,6 +200,7 @@ class _DetailHeader extends StatelessWidget {
                   child: ClipOval(
                     child: CollectiblePortrait(
                       slug: collectible.slug,
+                      name: collectible.name,
                       type: collectible.type,
                       rarityValue: rarityValue,
                       fit: BoxFit.cover,
@@ -355,7 +366,7 @@ class _LockedStory extends StatelessWidget {
           ),
           const SizedBox(height: 8),
           Text(
-            'Temukan tokoh ini di checkpoint masjid untuk membuka kisah lengkapnya.',
+            'Temukan hero ini di lokasi bersejarahnya untuk membuka kisah lengkapnya.',
             textAlign: TextAlign.center,
             style: theme.textTheme.bodyMedium
                 ?.copyWith(color: AppColors.textSecondary),

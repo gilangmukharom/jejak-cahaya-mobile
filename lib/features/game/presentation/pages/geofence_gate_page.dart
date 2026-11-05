@@ -283,14 +283,14 @@ class _ErrorView extends StatelessWidget {
           ),
           const SizedBox(height: 10),
 
-          // Daftar masjid gagal dimuat bukan alasan menutup jadwal sholat, yang
-          // dihitung sepenuhnya di perangkat dan tidak memerlukan server.
+          // Daftar lokasi gagal dimuat bukan alasan mengunci seluruh aplikasi:
+          // koleksi hero dan profil tetap bisa dibuka.
           TextButton(
-            onPressed: () => context.go(AppRoutes.worship),
+            onPressed: () => context.go(AppRoutes.collection),
             style: TextButton.styleFrom(
               foregroundColor: AppColors.textOnDark.withValues(alpha: 0.8),
             ),
-            child: const Text('Buka jadwal sholat'),
+            child: const Text('Buka Hero Collection'),
           ),
         ],
       ),

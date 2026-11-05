@@ -3,9 +3,9 @@ import 'dart:async';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:jejak_cahaya/core/utils/asset_url.dart';
-import 'package:jejak_cahaya/features/ar/data/ar_capability.dart';
-import 'package:jejak_cahaya/features/ar/data/model_cache.dart';
+import 'package:nusaverse/core/utils/asset_url.dart';
+import 'package:nusaverse/features/ar/data/ar_capability.dart';
+import 'package:nusaverse/features/ar/data/model_cache.dart';
 
 void main() {
   group('resolveBackendAssetUrl', () {
@@ -82,14 +82,16 @@ void main() {
   group('ArCapability', () {
     TestWidgetsFlutterBinding.ensureInitialized();
 
-    test('selalu tidak didukung di luar Android tanpa bertanya ke native', () async {
+    test('selalu tidak didukung di luar Android tanpa bertanya ke native',
+        () async {
       debugDefaultTargetPlatformOverride = TargetPlatform.iOS;
       addTearDown(() => debugDefaultTargetPlatformOverride = null);
 
       expect(await ArCapability().isSupported(), isFalse);
     });
 
-    test('menunggu ARCore selesai memeriksa saat jawabannya "unknown"', () async {
+    test('menunggu ARCore selesai memeriksa saat jawabannya "unknown"',
+        () async {
       debugDefaultTargetPlatformOverride = TargetPlatform.android;
       addTearDown(() => debugDefaultTargetPlatformOverride = null);
 
@@ -106,7 +108,8 @@ void main() {
       expect(answers, isEmpty);
     });
 
-    test('ARCore yang tidak pernah menjawab tidak menggantung layar AR', () async {
+    test('ARCore yang tidak pernah menjawab tidak menggantung layar AR',
+        () async {
       // Reproduksi bug "loading mentok di 100%": jawaban native tidak pernah
       // datang, dan sebelumnya pemanggil ikut menunggu selamanya.
       debugDefaultTargetPlatformOverride = TargetPlatform.android;
@@ -134,7 +137,8 @@ void main() {
       expect(await capability.isSupported(), isTrue);
     });
 
-    test('plugin native yang tidak terpasang dianggap tidak didukung', () async {
+    test('plugin native yang tidak terpasang dianggap tidak didukung',
+        () async {
       debugDefaultTargetPlatformOverride = TargetPlatform.android;
       addTearDown(() => debugDefaultTargetPlatformOverride = null);
 

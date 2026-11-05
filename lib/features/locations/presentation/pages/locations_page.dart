@@ -5,7 +5,7 @@ import 'package:go_router/go_router.dart';
 import '../../../../app/router/app_routes.dart';
 import '../../../../app/theme/app_colors.dart';
 import '../../../../core/di/injection.dart';
-import '../../../../core/models/mosque.dart';
+import '../../../../core/models/site.dart';
 import '../../../../core/services/location_service.dart';
 import '../../../../core/widgets/app_widgets.dart';
 import '../../../game/presentation/cubit/geofence_cubit.dart';
@@ -40,7 +40,7 @@ class _LocationsPageState extends State<LocationsPage> {
     // Angka kemajuan berubah setiap kali pemain memindai sesuatu, dan layar ini
     // bisa dibuka berjam-jam setelah itu. Disegarkan saat dibuka, bukan hanya
     // saat ditarik ke bawah.
-    _cubit.refreshMosques();
+    _cubit.refreshSites();
   }
 
   @override
@@ -61,20 +61,20 @@ class _LocationsView extends StatelessWidget {
       backgroundColor: AppColors.cream,
       body: BlocBuilder<GeofenceCubit, GeofenceState>(
         builder: (context, state) {
-          final mosques = _sorted(state);
+          final sites = _sorted(state);
 
           return RefreshIndicator(
             color: AppColors.primary,
-            onRefresh: () => context.read<GeofenceCubit>().refreshMosques(),
+            onRefresh: () => context.read<GeofenceCubit>().refreshSites(),
             child: CustomScrollView(
               physics: const AlwaysScrollableScrollPhysics(),
               slivers: [
                 _Header(state: state),
-                if (mosques.isEmpty)
+                if (sites.isEmpty)
                   const SliverFillRemaining(
                     hasScrollBody: false,
                     child: EmptyView(
-                      icon: Icons.mosque_outlined,
+                      icon: Icons.account_balance_outlined,
                       title: 'Belum ada lokasi',
                       message:
                           'Pengurus belum menyiapkan lokasi penjelajahan mana pun. '
@@ -85,10 +85,10 @@ class _LocationsView extends StatelessWidget {
                   SliverPadding(
                     padding: const EdgeInsets.fromLTRB(16, 4, 16, 28),
                     sliver: SliverList.separated(
-                      itemCount: mosques.length,
+                      itemCount: sites.length,
                       separatorBuilder: (_, __) => const SizedBox(height: 12),
                       itemBuilder: (context, index) {
-                        final mosque = mosques[index];
+                        final site = sites[index];
 
                         return LocationCard(
                           // Kunci berbasis id, bukan posisi. Daftar diurut
@@ -96,12 +96,12 @@ class _LocationsView extends StatelessWidget {
                           // animasi masuk tiap kartu ikut berpindah ke kartu
                           // lain — cincin progres akan menganimasikan angka
                           // milik masjid yang berbeda.
-                          key: ValueKey(mosque.id),
-                          mosque: mosque,
+                          key: ValueKey(site.id),
+                          site: site,
                           index: index,
-                          isActive: state.mosque?.id == mosque.id,
+                          isActive: state.site?.id == site.id,
                           onTap: () =>
-                              context.push(AppRoutes.locationDetail(mosque.id)),
+                              context.push(AppRoutes.locationDetail(site.id)),
                         );
                       },
                     ),
@@ -120,18 +120,18 @@ class _LocationsView extends StatelessWidget {
   /// setiap pembaruan GPS — jadi tanpa pengurutan di sini daftar akan
   /// mempertahankan urutan dari beberapa menit yang lalu sementara angkanya
   /// sudah berubah, dan kartu paling atas berhenti menjadi yang paling dekat.
-  List<Mosque> _sorted(GeofenceState state) {
+  List<Site> _sorted(GeofenceState state) {
     final position = state.position;
-    if (position == null) return state.mosques;
+    if (position == null) return state.sites;
 
-    final withDistance = state.mosques
+    final withDistance = state.sites
         .map(
-          (mosque) => mosque.withDistance(
+          (site) => site.withDistance(
             LocationService.distanceMeters(
               fromLat: position.latitude,
               fromLon: position.longitude,
-              toLat: mosque.latitude,
-              toLon: mosque.longitude,
+              toLat: site.latitude,
+              toLon: site.longitude,
             ),
           ),
         )
@@ -153,7 +153,7 @@ class _Header extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    final inside = state.mosques.where((m) => m.isInside == true).length;
+    final inside = state.sites.where((m) => m.isInside == true).length;
 
     return SliverAppBar(
       pinned: true,
@@ -172,9 +172,9 @@ class _Header extends StatelessWidget {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Text(
-                    state.mosques.isEmpty
+                    state.sites.isEmpty
                         ? 'Memuat lokasi…'
-                        : '${state.mosques.length} lokasi tersedia',
+                        : '${state.sites.length} lokasi tersedia',
                     style: theme.textTheme.titleLarge?.copyWith(
                       color: AppColors.textOnDark,
                       fontWeight: FontWeight.w800,

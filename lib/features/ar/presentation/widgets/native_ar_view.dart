@@ -27,7 +27,7 @@ class NativeArView extends StatefulWidget {
     super.key,
   });
 
-  static const String viewType = 'id.jejakcahaya/ar_view';
+  static const String viewType = 'id.nusaverse/ar_view';
 
   /// Model yang ditampilkan: aset di APK atau berkas unduhan.
   final ModelSource source;
