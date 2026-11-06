@@ -53,7 +53,8 @@ class ProgressRing extends StatelessWidget {
         ),
       ),
       child: isComplete
-          ? const Icon(Icons.check_rounded, size: 22, color: AppColors.success)
+          ? const Icon(Icons.check_rounded,
+              size: 22, color: AppColors.success)
           : Text(
               label,
               style: TextStyle(

@@ -7,15 +7,12 @@ import 'package:go_router/go_router.dart';
 
 import '../../../../app/router/app_routes.dart';
 import '../../../../app/theme/app_colors.dart';
-import '../../../../core/di/injection.dart';
 import '../../../../core/models/achievement.dart';
 import '../../../../core/models/scan_result.dart';
-import '../../../../core/services/app_settings.dart';
 import '../../../../core/widgets/app_widgets.dart';
 import '../../../../core/widgets/collectible_portrait.dart';
 import '../../../../core/widgets/unlock_progress.dart';
 import '../../../auth/presentation/cubit/auth_cubit.dart';
-import '../../../rewards/presentation/widgets/points_badge.dart';
 
 /// Layar "Kamu Mendapatkan!" setelah scan berhasil.
 ///
@@ -49,9 +46,8 @@ class _DiscoveryResultPageState extends State<DiscoveryResultPage>
   @override
   void initState() {
     super.initState();
-    _confetti = ConfettiController(duration: const Duration(seconds: 2));
-    // Mode hemat baterai: tanpa hujan konfeti.
-    if (!sl<AppSettings>().batterySaver) _confetti.play();
+    _confetti = ConfettiController(duration: const Duration(seconds: 2))
+      ..play();
 
     _reveal = AnimationController(
       vsync: this,
@@ -130,22 +126,6 @@ class _DiscoveryResultPageState extends State<DiscoveryResultPage>
                       ),
                       const SizedBox(height: 24),
                       _XpChip(xp: result.xpEarned),
-                      if (result.points.total > 0) ...[
-                        const SizedBox(height: 10),
-                        PointsEarnedChip(points: result.points.total),
-                        if (result.points.locationVisit > 0) ...[
-                          const SizedBox(height: 6),
-                          Text(
-                            'Termasuk +${formatPoints(result.points.locationVisit)} '
-                            'bonus kunjungan pertama ke lokasi ini',
-                            textAlign: TextAlign.center,
-                            style: theme.textTheme.labelSmall?.copyWith(
-                              color:
-                                  AppColors.textOnDark.withValues(alpha: 0.7),
-                            ),
-                          ),
-                        ],
-                      ],
                       const SizedBox(height: 22),
                       // Gembok terbuka → titik berikutnya, masih tergembok.
                       UnlockProgress(
@@ -343,7 +323,6 @@ class _CollectibleCard extends StatelessWidget {
                               opacity: figure,
                               child: CollectiblePortrait(
                                 slug: collectible.slug,
-                                name: collectible.name,
                                 type: collectible.type,
                                 rarityValue: rarityValue,
                                 iconSize: 72,

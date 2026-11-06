@@ -16,8 +16,6 @@ class ScanResult extends Equatable {
     required this.missionCompleted,
     required this.unlockedAchievements,
     required this.progress,
-    this.points = const ScanPoints(),
-    this.nusaPoints = 0,
     this.quizId,
     this.levelUp,
     this.missionProgress,
@@ -31,12 +29,6 @@ class ScanResult extends Equatable {
   final bool hasQuiz;
   final bool missionCompleted;
   final List<Achievement> unlockedAchievements;
-
-  /// Rincian NUSA POINTS yang diperoleh dari scan ini.
-  final ScanPoints points;
-
-  /// Saldo NUSA POINTS setelah scan ini.
-  final int nusaPoints;
 
   final String? quizId;
 
@@ -65,8 +57,6 @@ class ScanResult extends Equatable {
       missionCompleted: Json.boolean(json['missionCompleted']),
       unlockedAchievements:
           Json.list(json['unlockedAchievements'], Achievement.fromJson),
-      points: ScanPoints.fromJson(Json.map(json['pointsEarned'])),
-      nusaPoints: Json.integer(json['nusaPoints']),
       quizId: Json.strOrNull(json['quizId']),
       levelUp: json['levelUp'] is Map<String, dynamic>
           ? LevelUp.fromJson(json['levelUp'] as Map<String, dynamic>)
@@ -87,35 +77,6 @@ class ScanResult extends Equatable {
 
   @override
   List<Object?> get props => [collectible, xpEarned, levelUp, missionCompleted];
-}
-
-/// NUSA POINTS dari satu scan, dirinci per sumber.
-class ScanPoints extends Equatable {
-  const ScanPoints({
-    this.discovery = 0,
-    this.locationVisit = 0,
-    this.mission = 0,
-  });
-
-  /// Dari menemukan hero.
-  final int discovery;
-
-  /// Bonus kunjungan pertama ke lokasi mitra.
-  final int locationVisit;
-
-  /// Bonus misi yang barusan selesai.
-  final int mission;
-
-  int get total => discovery + locationVisit + mission;
-
-  factory ScanPoints.fromJson(Map<String, dynamic> json) => ScanPoints(
-        discovery: Json.integer(json['discovery']),
-        locationVisit: Json.integer(json['locationVisit']),
-        mission: Json.integer(json['mission']),
-      );
-
-  @override
-  List<Object?> get props => [discovery, locationVisit, mission];
 }
 
 /// Titik berikutnya yang harus didatangi pemain.

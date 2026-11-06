@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 
 import '../../../../app/theme/app_colors.dart';
-import '../../../../core/models/site.dart';
+import '../../../../core/models/mosque.dart';
 import '../../../../core/utils/distance.dart';
 import 'progress_ring.dart';
 
@@ -16,14 +16,14 @@ import 'progress_ring.dart';
 /// menonjolkan satu kartu akan menghilangkan satu-satunya urutan yang berguna.
 class LocationCard extends StatefulWidget {
   const LocationCard({
-    required this.site,
+    required this.mosque,
     required this.isActive,
     required this.onTap,
     this.index = 0,
     super.key,
   });
 
-  final Site site;
+  final Mosque mosque;
 
   /// True bila inilah lokasi yang sedang dibuka aplikasi.
   final bool isActive;
@@ -83,9 +83,9 @@ class _LocationCardState extends State<LocationCard>
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    final site = widget.site;
-    final progress = site.progress;
-    final isInside = site.isInside == true;
+    final mosque = widget.mosque;
+    final progress = mosque.progress;
+    final isInside = mosque.isInside == true;
 
     return FadeTransition(
       opacity: _fade,
@@ -136,7 +136,7 @@ class _LocationCardState extends State<LocationCard>
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
                             Text(
-                              site.name,
+                              mosque.name,
                               maxLines: 2,
                               overflow: TextOverflow.ellipsis,
                               style: theme.textTheme.titleMedium
@@ -144,7 +144,7 @@ class _LocationCardState extends State<LocationCard>
                             ),
                             const SizedBox(height: 3),
                             Text(
-                              site.placeLabel,
+                              mosque.placeLabel,
                               maxLines: 1,
                               overflow: TextOverflow.ellipsis,
                               style: theme.textTheme.bodySmall
@@ -162,7 +162,7 @@ class _LocationCardState extends State<LocationCard>
                           isComplete: progress.isCompleted,
                         )
                       else
-                        _CountBadge(count: site.checkpointCount),
+                        _CountBadge(count: mosque.checkpointCount),
                     ],
                   ),
                   const SizedBox(height: 14),
@@ -170,16 +170,16 @@ class _LocationCardState extends State<LocationCard>
                     spacing: 7,
                     runSpacing: 7,
                     children: [
-                      _StatusPill(site: site),
-                      if (site.distanceM != null && !isInside)
+                      _StatusPill(mosque: mosque),
+                      if (mosque.distanceM != null && !isInside)
                         _Chip(
                           icon: Icons.straighten_rounded,
-                          label: formatDistance(site.distanceM!),
+                          label: formatDistance(mosque.distanceM!),
                         ),
                       _Chip(
                         icon: Icons.flag_rounded,
                         label: progress == null
-                            ? '${site.missionCount} misi'
+                            ? '${mosque.missionCount} misi'
                             : '${progress.completedMissions}/${progress.totalMissions} misi',
                       ),
                       if (progress != null && progress.xpEarned > 0)
@@ -204,13 +204,13 @@ class _LocationCardState extends State<LocationCard>
 /// Pil status: satu-satunya baris yang menentukan apakah pemain bisa langsung
 /// bermain, jadi diberi warna paling kuat di kartu.
 class _StatusPill extends StatelessWidget {
-  const _StatusPill({required this.site});
+  const _StatusPill({required this.mosque});
 
-  final Site site;
+  final Mosque mosque;
 
   @override
   Widget build(BuildContext context) {
-    final isInside = site.isInside;
+    final isInside = mosque.isInside;
 
     // Jarak belum diketahui — GPS belum mengunci, atau pemain menolak izin
     // lokasi. Menebak "di luar area" di keadaan itu akan salah separuh waktu.
@@ -230,7 +230,7 @@ class _StatusPill extends StatelessWidget {
       );
     }
 
-    final away = site.metersToEnter;
+    final away = mosque.metersToEnter;
     return _Chip(
       icon: Icons.directions_walk_rounded,
       label: away == null

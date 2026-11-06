@@ -140,21 +140,21 @@ class ScannerCubit extends Cubit<ScannerState> with SafeEmit<ScannerState> {
   /// sedang berdiri di lapangan dan butuh tahu harus berbuat apa.
   static String hintFor(Failure failure) => switch (failure.code) {
         ApiErrorCode.outsideGeofence =>
-          'Datang ke area lokasi bersejarah untuk mulai menjelajah.',
+          'Datang ke area masjid untuk mulai menjelajah.',
         ApiErrorCode.tooFarFromCheckpoint =>
           'Berjalanlah mendekat ke titik checkpoint, lalu pindai lagi.',
         ApiErrorCode.qrSignatureInvalid ||
         ApiErrorCode.qrInvalid =>
-          'Pastikan Anda memindai QR resmi Nusaverse di lokasi checkpoint.',
+          'Pastikan Anda memindai QR resmi Jejak Cahaya di lokasi checkpoint.',
         ApiErrorCode.mockLocationDetected =>
-          'Nonaktifkan aplikasi lokasi palsu, lalu buka ulang Nusaverse.',
+          'Nonaktifkan aplikasi lokasi palsu, lalu buka ulang Jejak Cahaya.',
         ApiErrorCode.poorGpsAccuracy =>
           'Keluar ke area terbuka agar sinyal GPS lebih kuat.',
         ApiErrorCode.alreadyDiscovered =>
-          'Hero ini sudah ada di koleksimu. Cari titik hero lain di peta.',
+          'Tokoh ini sudah ada di koleksi Anda. Cari checkpoint lain di peta.',
         ApiErrorCode.missionLocked =>
           'Selesaikan checkpoint sebelumnya terlebih dahulu.',
         ApiErrorCode.rateLimited => 'Tunggu sebentar sebelum memindai lagi.',
-        _ => 'Coba pindai ulang. Bila terus gagal, hubungi petugas di lokasi.',
+        _ => 'Coba pindai ulang. Bila terus gagal, hubungi pengurus masjid.',
       };
 }

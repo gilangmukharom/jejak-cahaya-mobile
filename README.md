@@ -1,8 +1,7 @@
-# NUSAVERSE — Mobile App
+# Jejak Cahaya — Mobile App
 
-Aplikasi Flutter untuk **NUSAVERSE — Discover Heroes. Explore Indonesia.**:
-game edukasi berbasis lokasi untuk menemukan pahlawan Indonesia lewat AR di
-lokasi-lokasi bersejarah, lengkap dengan NUSA POINTS dan Reward Store.
+Aplikasi Flutter untuk **Jejak Cahaya — Islamic Explorer**: permainan edukasi
+berbasis lokasi di area masjid.
 
 **Flutter 3.44 · Dart 3.12 · Clean Architecture · BLoC**
 
@@ -69,16 +68,19 @@ Keduanya hidup berdampingan dalam satu build — lihat komentar di `ios/Podfile`
 
 Sebelum build pertama, buka `ios/Runner.xcworkspace` (**bukan** `.xcodeproj` —
 target CocoaPods hanya ada di workspace) lalu isi *Signing & Capabilities* →
-*Team*. Bundle ID iOS dan application ID Android sama-sama `id.nusaverse.app`.
+*Team*. Bundle ID-nya `id.jejakcahaya.jejakCahaya`; huruf kapital di tengah
+bukan kekeliruan, melainkan konsekuensi iOS yang tidak menerima garis bawah
+pada bundle ID, sementara Android memakai `id.jejakcahaya.jejak_cahaya`.
 
 | Berkas                                   | Berisi                                                        |
 | ---------------------------------------- | ------------------------------------------------------------- |
 | `ios/Podfile`                            | Versi iOS minimum (13.0) dan pod untuk plugin non-SPM          |
 | `ios/Runner/Info.plist`                  | Teks izin, orientasi potret, ATS, pernyataan kepatuhan ekspor  |
-| `ios/Runner/Base.lproj/LaunchScreen.storyboard` | Latar peluncuran, disamakan dengan Android               |
+| `ios/Runner/AppDelegate.swift`           | Delegate `UNUserNotificationCenter` — tanpanya pengingat sholat tidak tampil selagi aplikasi dibuka |
+| `ios/Runner/Base.lproj/LaunchScreen.storyboard` | Latar peluncuran `#06251C`, disamakan dengan Android    |
 
-iOS 13.0 adalah lantainya, ditentukan oleh `maplibre_gl` dan `flutter_tts`.
-Angka itu ditulis di tiga tempat yang harus
+iOS 13.0 adalah lantainya, ditentukan oleh `maplibre_gl`, `sensors_plus`, dan
+`flutter_local_notifications`. Angka itu ditulis di tiga tempat yang harus
 sejalan: `platform` di `Podfile`, `IPHONEOS_DEPLOYMENT_TARGET` di
 `Runner.xcodeproj`, dan paket SPM yang dibangkitkan Flutter.
 
@@ -100,21 +102,20 @@ lib/
 │   ├── error/                   # Failure, exception, dan pemetaannya
 │   ├── models/                  # Model domain lintas fitur
 │   ├── network/                 # Dio + interceptor, ApiClient
-│   ├── services/                # LocationService, AppSettings (aksesibilitas), narasi TTS
+│   ├── services/                # LocationService, jadwal sholat, kiblat, notifikasi
 │   ├── storage/                 # Token (terenkripsi) & preferensi
 │   └── widgets/                 # Widget bersama
 └── features/
     ├── auth/                    # Masuk, daftar, sesi
     ├── game/                    # Geofence gate, peta, radar, hasil penemuan
-    ├── locations/               # Daftar lokasi bersejarah & kemajuan pemain
+    ├── locations/               # Daftar lokasi & kemajuan pemain di tiap masjid
     ├── scanner/                 # Pemindai QR
-    ├── ar/                      # AR hero (native ARCore) & cadangan 3D
-    ├── collection/              # Hero Collection
+    ├── collection/              # Galeri koleksi
     ├── mission/                 # Daftar & detail misi
-    ├── quiz/                    # Pengerjaan kuis
-    ├── rewards/                 # NUSA POINTS, Reward Store, tantangan
+    ├── quiz/                    # Pengerjaan quiz
+    ├── worship/                 # Jadwal sholat & arah kiblat
     ├── leaderboard/             # Papan peringkat
-    └── profile/                 # Profil, pencapaian, pengaturan & aksesibilitas
+    └── profile/                 # Profil & pencapaian
 ```
 
 ### Anatomi sebuah fitur
@@ -180,21 +181,21 @@ dengan gaya di `lib/app/theme/game_map_style.dart`. Tiga akibatnya:
   dihubungi. Perlu dicatat bahwa `tile.openstreetmap.org` — yang dipakai versi
   sebelumnya — melarang pemakaian oleh aplikasi yang didistribusikan, jadi
   pendekatan ini sekaligus menyelesaikan persoalan itu.
-- **Peta berjalan tanpa jaringan.** Pelataran lokasi kerap bersinyal buruk.
+- **Peta berjalan tanpa jaringan.** Pelataran masjid kerap bersinyal buruk.
 - **Paletnya ditentukan sendiri:** rumput hijau, air toska, jalan krem, dan
   seluruh label POI dimatikan — tidak ada teks di atas peta selain milik
   permainan sendiri.
 
-Cara membuat ulang arsipnya untuk lokasi baru ada di
+Cara membuat ulang arsipnya untuk masjid baru ada di
 [`assets/map/README.md`](assets/map/README.md). Atribusi OpenStreetMap wajib
 ditampilkan (ODbL) dan sudah terpasang lewat `MapAttribution`.
 
 ### Geofence terus dipantau, bukan sekali cek
 
 `GeofenceCubit` memantau aliran posisi, sehingga peta terbuka sendiri begitu
-pemain melangkah masuk ke area lokasi. Pemeriksaan ke server dijarangkan
+pemain melangkah masuk ke area masjid. Pemeriksaan ke server dijarangkan
 (minimal 8 detik di luar area, 30 detik di dalam) agar berjalan menyusuri
-halaman lokasi tidak menghasilkan puluhan permintaan per menit.
+halaman masjid tidak menghasilkan puluhan permintaan per menit.
 
 Cubit-nya berumur sepanjang aplikasi dan didaftarkan di `core/di/injection.dart`,
 bukan dibuat per layar: tiga layar bergantung pada jawabannya sekaligus —
@@ -203,9 +204,9 @@ GPS berjalan berbarengan serta tiga jawaban yang bisa berbeda.
 
 ### Banyak lokasi, dipilih sendiri oleh aplikasi
 
-Permainan berjalan di beberapa lokasi. Pemain tidak diminta memilih apa pun:
-`GeofenceCubit` menghitung lokasi terdekat dari posisinya pada setiap pembaruan
-GPS, dan lokasi itulah yang dibuka. Berpindah lokasi cukup dengan datang ke sana.
+Permainan berjalan di beberapa masjid. Pemain tidak diminta memilih apa pun:
+`GeofenceCubit` menghitung masjid terdekat dari posisinya pada setiap pembaruan
+GPS, dan lokasi itulah yang dibuka. Berpindah masjid cukup dengan datang ke sana.
 
 Layar **Lokasi Penjelajahan** (`features/locations/`) menampilkan seluruh lokasi
 terurut dari yang terdekat, masing-masing dengan cincin progresnya sendiri —
@@ -213,27 +214,51 @@ berapa titik ditemukan, berapa misi selesai, berapa XP diperoleh *di lokasi itu*
 Dari sana sebuah lokasi bisa dipilih manual untuk dilihat isinya sebelum berangkat.
 
 Pilihan manual itu punya satu aturan yang menentukan: ia dilepas begitu pemain
-benar-benar melangkah masuk ke area lokasi lain. Berdiri di dalam pelataran sebuah
-lokasi adalah pernyataan yang lebih kuat daripada pilihan yang dibuat kemarin dari
-rumah — tanpa aturan itu, seseorang akan berdiri di lokasi tujuannya sambil melihat
-layar yang menyatakan ia berada di luar area, milik lokasi yang salah.
+benar-benar melangkah masuk ke area masjid lain. Berdiri di dalam pelataran sebuah
+masjid adalah pernyataan yang lebih kuat daripada pilihan yang dibuat kemarin dari
+rumah — tanpa aturan itu, seseorang akan berdiri di masjid tujuannya sambil melihat
+layar yang menyatakan ia berada di luar area, milik masjid yang salah.
 
 Layar ini memakai ulang `GeofenceCubit`, bukan cubit sendiri. Cubit itu sudah
-memegang daftar lokasi, posisi pemain, dan lokasi yang sedang dibuka; sumber kedua
+memegang daftar masjid, posisi pemain, dan lokasi yang sedang dibuka; sumber kedua
 berarti dua layar bisa menjawab berbeda atas pertanyaan "saya sedang main di mana",
 dan yang salah selalu terlihat lebih meyakinkan karena ia yang paling baru digambar.
 
 ### Di luar area, yang terkunci hanya peta
 
-Berada di luar radius lokasi **tidak** menutup aplikasi. Yang tertutup hanyalah
+Berada di luar radius masjid **tidak** menutup aplikasi. Yang tertutup hanyalah
 peta permainan: petanya tetap tergambar tetapi dikaburkan, dan di atasnya
-muncul kartu berisi nama lokasi terdekat yang bisa dimainkan beserta sisa jarak
+muncul kartu berisi nama masjid terdekat yang bisa dimainkan beserta sisa jarak
 menuju tepi areanya (dihitung lokal dengan rumus yang sama dengan server, jadi
 angkanya tidak berselisih dengan jawaban resmi).
 
-Hero Collection, Reward Store, tantangan, misi, papan peringkat, dan profil
-tetap terbuka dari mana saja. Pemindai pun tidak dihalangi — penolakannya datang dari
+Jadwal sholat, arah kiblat, koleksi, misi, papan peringkat, dan profil tetap
+terbuka dari mana saja. Pemindai pun tidak dihalangi — penolakannya datang dari
 server dengan alasan yang sudah spesifik.
+
+### Jadwal sholat dihitung di perangkat
+
+`PrayerTimesCalculator` menghitung posisi matahari sendiri (algoritma yang sama
+dengan PrayTimes.org), jadi jadwalnya benar tanpa satu pun permintaan jaringan
+— penting karena ini satu-satunya bagian aplikasi yang harus tetap bekerja di
+ruang bawah masjid tanpa sinyal.
+
+Metode bawaan Kemenag RI (Subuh 20°, Isya 18°, ihtiyati 2 menit); MWL, Egyptian,
+Umm al-Qura, dan ISNA bisa dipilih, begitu pula mazhab waktu Ashar. Lintang
+tinggi ditangani dengan aturan pembagian malam berbasis sudut, sehingga London
+di bulan Juni tetap menghasilkan jadwal utuh alih-alih NaN.
+
+Pengingatnya dititipkan ke alarm sistem lewat `flutter_local_notifications` —
+tujuh hari sekaligus, diisi ulang setiap aplikasi dibuka. Aplikasi tidak berjalan
+di latar belakang untuk menunggu jam empat pagi.
+
+### Kompas kiblat dirakit sendiri
+
+Arah hadap dihitung dari akselerometer + magnetometer dengan rumus yang sama
+dengan `SensorManager.getRotationMatrix` di Android, jadi hasilnya sudah
+terkoreksi kemiringan. Paket kompas siap pakai yang beredar tidak dipakai:
+semuanya sudah lama tidak dirawat dan tidak punya `namespace`, sehingga gagal
+dibangun pada Android Gradle Plugin yang dipakai proyek ini.
 
 ### Refresh token disatukan
 
@@ -253,37 +278,44 @@ Splash ──► Login / Daftar
       Geofence Gate  (hanya menunggu sinyal GPS — tidak menahan siapa pun)
              │
              ▼
-   ┌──── Home Shell (4 tab + tombol pindai) ─────┐
-   │  NUSA WORLD · Hero Collection · Reward · Profil
-   └──────────────┬──────────────────────────────┘
-                  │
-     ┌────────────┴──────────┬───────────────────────┐
-     ▼                       ▼                       ▼
-  NUSA WORLD              Reward Store           (tombol pindai)
-   ├─(di dalam area)       ├─ Katalog & tukar        │
-   │   titik hero, radar   ├─ Penukaranku (kode)     ▼
-   └─(di luar area)        ├─ Riwayat poin      Pemindai QR
-       peta blur +         └─ Tantangan           ├─► AR hero + kisah ──► Hadiah XP & poin ──► Kuis
-       lokasi terdekat                            └─► Ditolak (alasan + petunjuk;
-       + sisa jarak                                    hero yang sudah dimiliki → "Lihat dalam AR")
+   ┌──── Home Shell (4 tab) ─────────┐
+   │  Peta · Koleksi · Ibadah · Profil
+   └────────────┬────────────────────┘
+                │
+     ┌──────────┴───────────┬──────────────────┐
+     ▼                      ▼                  ▼
+  Peta                   Ibadah            (FAB pindai)
+   ├─(di dalam area)      ├─ Jadwal sholat      │
+   │   checkpoint, radar  ├─ Arah kiblat        ▼
+   └─(di luar area)       └─ Pengaturan   Pemindai QR
+       peta blur +           notifikasi     ├─► Hasil Penemuan ──► Quiz
+       masjid terdekat                      └─► Ditolak (alasan + petunjuk)
+       + sisa jarak
 
-Profil: misi, tantangan, pencapaian, peringkat, Pengaturan & Aksesibilitas.
+Misi tidak lagi punya tab sendiri: dijangkau dari bilah misi di atas peta
+dan dari halaman Profil.
 ```
 
 ---
 
 ## Izin
 
-| Izin    | Alasan |
-| ------- | ------ |
-| Lokasi  | Geofence lokasi bersejarah (Layer 1) dan proximity checkpoint (Layer 2) |
-| Kamera  | Memindai QR checkpoint (Layer 3) dan AR hero |
+| Izin                    | Alasan                                                       |
+| ----------------------- | ------------------------------------------------------------ |
+| Lokasi                  | Geofence masjid (Layer 1), proximity checkpoint (Layer 2), dan koordinat jadwal sholat & arah kiblat |
+| Kamera                  | Memindai QR checkpoint (Layer 3)                             |
+| Notifikasi              | Pengingat waktu sholat — diminta hanya saat pengguna menyalakannya |
+| `SCHEDULE_EXACT_ALARM`  | Agar pengingat berbunyi tepat menit. Ditolak pun jadwalnya tetap terpasang, hanya dengan ketelitian beberapa menit |
+| `RECEIVE_BOOT_COMPLETED`| Memasang ulang pengingat setelah perangkat dinyalakan; sistem menghapus seluruh alarm saat mati |
+| Sensor magnet           | Kompas kiblat. Tidak diwajibkan — tanpa magnetometer, sudutnya tetap ditampilkan sebagai angka |
 
 Sudah dikonfigurasi di `AndroidManifest.xml` dan `ios/Runner/Info.plist`.
+Dua baris terakhir tabel adalah izin khusus Android; di iOS penjadwalan alarm
+presisi sudah tercakup oleh izin notifikasi, dan jadwalnya bertahan melewati
+restart tanpa izin tambahan. Sebaliknya `NSMotionUsageDescription` hanya ada di
+iOS — Android tidak meminta izin apa pun untuk membaca magnetometer.
 Lokasi presisi (`ACCESS_FINE_LOCATION`) diperlukan karena radius checkpoint
-hanya ±25 m — akurasi kasar meleset terlalu jauh untuk itu. Manifest juga
-mendeklarasikan kueri `TTS_SERVICE` agar audio narasi menemukan mesin suara di
-Android 11+.
+hanya ±25 m — akurasi kasar meleset terlalu jauh untuk itu.
 
 Izin yang ditolak permanen ditangani terpisah: aplikasi mengarahkan pengguna ke
 pengaturan sistem, karena meminta ulang tidak akan memunculkan dialog apa pun.
@@ -292,9 +324,9 @@ pengaturan sistem, karena meminta ulang tidak akan memunculkan dialog apa pun.
 
 ## Yang Belum Ada
 
-- **Ilustrasi pahlawan** — Hero Card memakai monogram inisial sampai potret
-  orisinal tersedia (lihat `assets/characters/README.md`).
-- **Model 3D per pahlawan** — semua pahlawan memakai model bawaan; model lain
-  diunggah dan dipilih per pahlawan lewat panel admin.
+- **Aset gambar tokoh** — `assets/images/` masih kosong; kartu koleksi memakai
+  ikon sebagai penanda. Tata letaknya sudah final, tinggal mengisi `imageUrl`.
+- **Audio story** (Tahap 2) — kolom `audioUrl` sudah dibawa model, pemutarnya belum dibuat.
+- **AR Camera** (Tahap 3) — kolom `modelUrl` sudah tersedia untuk aset glTF.
 - **Test integrasi** — layar penuh bergantung pada GetIt, jaringan, dan GPS,
   sehingga memerlukan server tiruan, bukan widget test.

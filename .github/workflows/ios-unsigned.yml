@@ -1,7 +1,7 @@
 # ══ Build iOS dari Windows, lewat GitHub Actions ═════════════════════
 #
 # Sejajar dengan `codemagic.yaml` dan menghasilkan hal yang sama persis:
-# satu `Nusaverse-unsigned.ipa` tanpa tanda tangan, yang ditandatangani
+# satu `JejakCahaya-unsigned.ipa` tanpa tanda tangan, yang ditandatangani
 # lokal memakai Sideloadly atau AltStore dengan Apple ID gratis.
 #
 # Mengapa ada dua. Repo ini publik, dan GitHub memberi menit runner macOS
@@ -166,14 +166,14 @@ jobs:
           cd build/ios/iphoneos
           mkdir -p Payload
           mv Runner.app Payload/
-          zip -qr "$GITHUB_WORKSPACE/Nusaverse-unsigned.ipa" Payload
-          ls -lh "$GITHUB_WORKSPACE/Nusaverse-unsigned.ipa"
+          zip -qr "$GITHUB_WORKSPACE/JejakCahaya-unsigned.ipa" Payload
+          ls -lh "$GITHUB_WORKSPACE/JejakCahaya-unsigned.ipa"
 
       - name: Unggah .ipa
         uses: actions/upload-artifact@v4
         with:
-          name: Nusaverse-unsigned-${{ github.run_number }}
-          path: Nusaverse-unsigned.ipa
+          name: JejakCahaya-unsigned-${{ github.run_number }}
+          path: JejakCahaya-unsigned.ipa
           # Cukup lama untuk memasang ulang tanpa membangun ulang ketika
           # tanda tangan Apple ID gratis kedaluwarsa setiap 7 hari.
           retention-days: 30

@@ -42,12 +42,12 @@ enum CollectibleType {
 }
 
 enum CollectibleCategory {
-  warrior('WARRIOR', 'Pejuang Perlawanan'),
-  educator('EDUCATOR', 'Pendidik & Pemikir'),
-  military('MILITARY', 'Militer & Pertempuran'),
-  leader('LEADER', 'Proklamator & Pemimpin'),
-  movement('MOVEMENT', 'Tokoh Pergerakan'),
-  artifact('ARTIFACT', 'Situs & Benda Bersejarah'),
+  companion('COMPANION', 'Sahabat'),
+  scholar('SCHOLAR', 'Ulama & Ilmuwan'),
+  explorer('EXPLORER', 'Penjelajah'),
+  leader('LEADER', 'Pemimpin'),
+  nusantara('NUSANTARA', 'Penyebar di Nusantara'),
+  artifact('ARTIFACT', 'Artefak Masjid'),
   unknown('UNKNOWN', 'Lainnya');
 
   const CollectibleCategory(this.value, this.label);

@@ -14,18 +14,16 @@ class AppRoutes {
   static const String explore = '/explore';
   static const String collection = '/collection';
 
-  /// Tab Reward Store — tukar NUSA POINTS dengan hadiah.
+  /// Tab Ibadah — jadwal sholat & arah kiblat.
   ///
-  /// Misi dijangkau dari bilah misi di atas peta dan dari halaman Profil.
-  static const String rewards = '/rewards';
-  static const String myRedemptions = '/rewards/penukaran';
-  static const String pointHistory = '/rewards/poin';
-
-  /// Tantangan harian & mingguan.
-  static const String challenges = '/tantangan';
-
-  /// Pengaturan Family & Accessibility.
-  static const String settings = '/pengaturan';
+  /// Menempati slot yang dulu dipakai Misi. Alasannya bukan bahwa Misi kurang
+  /// penting, melainkan bahwa Misi hanya berguna ketika pemain sedang berada di
+  /// masjid, sementara jadwal sholat berguna setiap hari di mana pun — dan
+  /// bilah bawah semestinya diisi hal-hal yang dicari orang paling sering.
+  /// Misi kini dijangkau dari bilah misi di atas peta dan dari halaman Profil.
+  static const String worship = '/ibadah';
+  static const String qibla = '/ibadah/kiblat';
+  static const String prayerSettings = '/ibadah/pengaturan';
 
   static const String missions = '/missions';
   static const String profile = '/profile';
@@ -45,16 +43,7 @@ class AppRoutes {
   static const String achievements = '/achievements';
 
   static const String discoveryResult = '/discovery';
-
-  /// Tokoh yang baru ditemukan, hadir dalam AR — dibuka langsung oleh pemindai
-  /// sebelum layar hadiah [discoveryResult]. Membaca hasil scan dari holder.
-  static const String discoveryAr = '/discovery/ar';
   static String collectibleDetail(String idOrSlug) => '/collectible/$idOrSlug';
-
-  /// Penampil 3D/AR satu tokoh. Membawa slug, bukan alamat modelnya: halaman
-  /// itu mengambil ulang collectible dari server, sehingga alamat model hanya
-  /// pernah datang dari backend — yang menahannya sampai tokohnya ditemukan.
-  static String collectibleAr(String idOrSlug) => '/collectible/$idOrSlug/ar';
   static String missionDetail(String id) => '/missions/$id';
   static String quiz(String quizId) => '/quiz/$quizId';
 
@@ -65,7 +54,6 @@ class AppRoutes {
 
   // Pola jalur untuk pendaftaran rute (memakai parameter go_router).
   static const String collectibleDetailPattern = '/collectible/:idOrSlug';
-  static const String collectibleArPattern = '/collectible/:idOrSlug/ar';
   static const String missionDetailPattern = '/missions/:id';
   static const String quizPattern = '/quiz/:quizId';
 

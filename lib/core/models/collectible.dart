@@ -27,7 +27,6 @@ class Collectible extends Equatable {
     this.imageUrl,
     this.audioUrl,
     this.modelUrl,
-    this.modelAnimation,
     this.discoveredAt,
   });
 
@@ -54,13 +53,6 @@ class Collectible extends Equatable {
   /// Aset 3D untuk mode AR (Tahap 3).
   final String? modelUrl;
 
-  /// Animasi yang diputar, dipilih admin: null = animasi pertama di berkas,
-  /// [animationNone] = diam, selain itu nama animasi di dalam GLB.
-  final String? modelAnimation;
-
-  /// Nilai [modelAnimation] untuk tokoh yang ditampilkan diam.
-  static const String animationNone = '@none';
-
   final DateTime? discoveredAt;
 
   factory Collectible.fromJson(Map<String, dynamic> json) => Collectible(
@@ -80,7 +72,6 @@ class Collectible extends Equatable {
         imageUrl: Json.strOrNull(json['imageUrl']),
         audioUrl: Json.strOrNull(json['audioUrl']),
         modelUrl: Json.strOrNull(json['modelUrl']),
-        modelAnimation: Json.strOrNull(json['modelAnimation']),
         discoveredAt: Json.dateTimeOrNull(json['discoveredAt']),
       );
 

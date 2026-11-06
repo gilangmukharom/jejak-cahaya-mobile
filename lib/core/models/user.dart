@@ -11,7 +11,6 @@ class User extends Equatable {
     required this.role,
     required this.totalXp,
     required this.level,
-    this.nusaPoints = 0,
     this.avatarUrl,
   });
 
@@ -22,10 +21,6 @@ class User extends Equatable {
   final String role;
   final int totalXp;
   final int level;
-
-  /// Saldo NUSA POINTS — dibelanjakan di Reward Store. Terpisah dari XP:
-  /// XP adalah kemajuan dan tidak pernah berkurang.
-  final int nusaPoints;
   final String? avatarUrl;
 
   factory User.fromJson(Map<String, dynamic> json) => User(
@@ -36,7 +31,6 @@ class User extends Equatable {
         role: Json.str(json['role'], 'PLAYER'),
         totalXp: Json.integer(json['totalXp']),
         level: Json.integer(json['level'], 1),
-        nusaPoints: Json.integer(json['nusaPoints']),
         avatarUrl: Json.strOrNull(json['avatarUrl']),
       );
 
@@ -50,17 +44,8 @@ class User extends Equatable {
   }
 
   @override
-  List<Object?> get props => [
-        id,
-        email,
-        username,
-        fullName,
-        role,
-        totalXp,
-        level,
-        nusaPoints,
-        avatarUrl
-      ];
+  List<Object?> get props =>
+      [id, email, username, fullName, role, totalXp, level, avatarUrl];
 }
 
 /// Pasangan token beserta umur access token.

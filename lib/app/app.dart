@@ -2,21 +2,23 @@ import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
 
+import 'dart:async';
+
 import '../core/config/app_config.dart';
 import '../core/di/injection.dart';
-import '../core/services/app_settings.dart';
+import '../core/services/prayer_notification_service.dart';
 import '../features/auth/presentation/cubit/auth_cubit.dart';
 import 'router/app_router.dart';
 import 'theme/app_theme.dart';
 
-class NusaverseApp extends StatefulWidget {
-  const NusaverseApp({super.key});
+class JejakCahayaApp extends StatefulWidget {
+  const JejakCahayaApp({super.key});
 
   @override
-  State<NusaverseApp> createState() => _NusaverseAppState();
+  State<JejakCahayaApp> createState() => _JejakCahayaAppState();
 }
 
-class _NusaverseAppState extends State<NusaverseApp> {
+class _JejakCahayaAppState extends State<JejakCahayaApp> {
   late final AuthCubit _authCubit;
   late final AppRouter _appRouter;
 
@@ -31,6 +33,13 @@ class _NusaverseAppState extends State<NusaverseApp> {
     // permintaan jaringan dimulai.
     WidgetsBinding.instance.addPostFrameCallback((_) {
       _authCubit.restoreSession();
+
+      // Pengingat sholat dipasang di muka untuk tujuh hari. Jendela itu perlu
+      // diisi ulang, dan mengisinya di sini berarti ia tetap penuh bagi orang
+      // yang membuka aplikasi tetapi tidak pernah menyentuh tab Ibadah.
+      // Tidak meminta izin apa pun: bila notifikasinya belum dinyalakan atau
+      // belum ada koordinat tersimpan, panggilan ini tidak melakukan apa-apa.
+      unawaited(sl<PrayerNotificationService>().refreshFromSavedLocation());
     });
   }
 
@@ -50,25 +59,19 @@ class _NusaverseAppState extends State<NusaverseApp> {
           GlobalWidgetsLocalizations.delegate,
           GlobalCupertinoLocalizations.delegate,
         ],
-        builder: (context, child) => ListenableBuilder(
-          listenable: sl<AppSettings>(),
-          builder: (context, _) {
-            // Kunci skala teks pada rentang yang wajar. Kartu koleksi dan panel
-            // radar memakai tata letak padat; skala 2× membuat teksnya
-            // terpotong. Mode teks besar menaikkan batas bawahnya ke 1,3× —
-            // terbaca jelas tanpa merusak tata letak.
-            final largeText = sl<AppSettings>().largeText;
-            final scale = MediaQuery.textScalerOf(context).clamp(
-              minScaleFactor: largeText ? 1.3 : 0.9,
-              maxScaleFactor: largeText ? 1.45 : 1.3,
-            );
+        builder: (context, child) {
+          // Kunci skala teks pada rentang yang wajar. Kartu koleksi dan panel
+          // radar memakai tata letak padat; skala 2× membuat teksnya terpotong.
+          final scale = MediaQuery.textScalerOf(context).clamp(
+            minScaleFactor: 0.9,
+            maxScaleFactor: 1.3,
+          );
 
-            return MediaQuery(
-              data: MediaQuery.of(context).copyWith(textScaler: scale),
-              child: child ?? const SizedBox.shrink(),
-            );
-          },
-        ),
+          return MediaQuery(
+            data: MediaQuery.of(context).copyWith(textScaler: scale),
+            child: child ?? const SizedBox.shrink(),
+          );
+        },
       ),
     );
   }

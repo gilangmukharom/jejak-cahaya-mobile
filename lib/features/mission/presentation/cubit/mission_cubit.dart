@@ -58,9 +58,9 @@ class MissionCubit extends Cubit<MissionState> with SafeEmit<MissionState> {
     // Tanpa langganan ini, daftar misi masih menampilkan status lama karena
     // tab-nya mempertahankan state.
     _discoverySubscription = scanResults.onDiscovery.listen((_) {
-      final siteId = _lastSiteId;
+      final mosqueId = _lastMosqueId;
       final missionId = _lastMissionId;
-      if (siteId != null) unawaited(loadMissions(siteId));
+      if (mosqueId != null) unawaited(loadMissions(mosqueId));
       if (missionId != null) unawaited(loadDetail(missionId));
     });
   }
@@ -68,15 +68,15 @@ class MissionCubit extends Cubit<MissionState> with SafeEmit<MissionState> {
   final GameRepository _repository;
 
   StreamSubscription<void>? _discoverySubscription;
-  String? _lastSiteId;
+  String? _lastMosqueId;
   String? _lastMissionId;
 
-  Future<void> loadMissions(String siteId) async {
-    _lastSiteId = siteId;
+  Future<void> loadMissions(String mosqueId) async {
+    _lastMosqueId = mosqueId;
     emit(state.copyWith(isLoading: true, clearFailure: true));
 
     try {
-      final missions = await _repository.fetchMissions(siteId);
+      final missions = await _repository.fetchMissions(mosqueId);
       emit(state.copyWith(
           isLoading: false, missions: missions, clearFailure: true));
     } on Object catch (error) {

@@ -65,28 +65,14 @@ class AuthCubit extends Cubit<AuthState> with SafeEmit<AuthState> {
   Future<void> restoreSession() async {
     emit(state.copyWith(status: AuthStatus.checking, clearFailure: true));
 
-    // Router menahan splash selama status masih `checking`. Tanpa jeda ini,
-    // pemain yang belum login — atau yang sesinya pulih dalam sekejap —
-    // hanya melihat splash berkedip sebelum langsung berganti. Jedanya
-    // berjalan BERSAMAAN dengan pemeriksaan sesi, bukan sesudahnya: bila
-    // server butuh dua detik, splash tidak bertambah lama setengah detik lagi.
-    final minimumSplash = Future<void>.delayed(splashMinimumDuration);
-    final next = await _resolveStoredSession();
-    await minimumSplash;
-    emit(next);
-  }
-
-  /// Lama minimal splash terlihat saat aplikasi dibuka.
-  static const Duration splashMinimumDuration = Duration(milliseconds: 500);
-
-  Future<AuthState> _resolveStoredSession() async {
     if (!await _repository.hasStoredSession()) {
-      return const AuthState(status: AuthStatus.unauthenticated);
+      emit(const AuthState(status: AuthStatus.unauthenticated));
+      return;
     }
 
     try {
       final user = await _repository.fetchCurrentUser();
-      return AuthState(status: AuthStatus.authenticated, user: user);
+      emit(AuthState(status: AuthStatus.authenticated, user: user));
     } on Object catch (error) {
       final failure = FailureMapper.map(error);
 
@@ -94,14 +80,17 @@ class AuthCubit extends Cubit<AuthState> with SafeEmit<AuthState> {
       // sini akan mengeluarkan pemain hanya karena sinyal buruk — kondisi yang
       // justru sering terjadi di area masjid dengan tembok tebal.
       if (failure is NetworkFailure) {
-        return state.copyWith(
-          status: AuthStatus.unauthenticated,
-          failure: failure,
+        emit(
+          state.copyWith(
+            status: AuthStatus.unauthenticated,
+            failure: failure,
+          ),
         );
+        return;
       }
 
       await _repository.logout();
-      return const AuthState(status: AuthStatus.unauthenticated);
+      emit(const AuthState(status: AuthStatus.unauthenticated));
     }
   }
 

@@ -112,7 +112,7 @@ class _RegisterPageState extends State<RegisterPage> {
                   ),
                   const SizedBox(height: 8),
                   Text(
-                    'Jelajahi Nusantara, temukan pahlawannya!',
+                    'Mulai jelajahi kisah para tokoh Islam di area masjid.',
                     style: theme.textTheme.bodyMedium
                         ?.copyWith(color: AppColors.textSecondary),
                   ),

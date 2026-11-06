@@ -28,10 +28,6 @@ class ApiErrorCode {
   static const String missionLocked = 'MISSION_LOCKED';
   static const String quizLocked = 'QUIZ_LOCKED';
   static const String quizAttemptLimit = 'QUIZ_ATTEMPT_LIMIT';
-
-  static const String insufficientPoints = 'INSUFFICIENT_POINTS';
-  static const String rewardUnavailable = 'REWARD_UNAVAILABLE';
-  static const String rewardOutOfStock = 'REWARD_OUT_OF_STOCK';
 }
 
 /// Kegagalan yang sudah diterjemahkan menjadi bentuk yang siap ditampilkan.

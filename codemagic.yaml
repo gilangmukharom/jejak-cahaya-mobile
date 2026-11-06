@@ -146,10 +146,10 @@ workflows:
           cd build/ios/iphoneos
           mkdir -p Payload
           mv Runner.app Payload/
-          zip -r "$CM_BUILD_DIR/Nusaverse-unsigned.ipa" Payload
+          zip -r "$CM_BUILD_DIR/JejakCahaya-unsigned.ipa" Payload
 
     artifacts:
-      - Nusaverse-unsigned.ipa
+      - JejakCahaya-unsigned.ipa
 
     publishing:
       # Tautan unduhan dikirim lewat surel supaya .ipa bisa diambil tanpa

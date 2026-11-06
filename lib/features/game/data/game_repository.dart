@@ -6,7 +6,7 @@ import '../../../core/models/collectible.dart';
 import '../../../core/models/json_utils.dart';
 import '../../../core/models/leaderboard_entry.dart';
 import '../../../core/models/mission.dart';
-import '../../../core/models/site.dart';
+import '../../../core/models/mosque.dart';
 import '../../../core/models/quiz.dart';
 import '../../../core/models/scan_result.dart';
 import '../../../core/network/api_client.dart';
@@ -36,17 +36,17 @@ class GameRepository {
   ///
   /// Ketika permintaan membawa token, tiap lokasi juga membawa kemajuan pemain
   /// di lokasi itu saja, sehingga layar daftar lokasi cukup satu panggilan.
-  Future<List<Site>> fetchSites({PlayerPosition? position}) =>
+  Future<List<Mosque>> fetchMosques({PlayerPosition? position}) =>
       FailureMapper.guard(
         () => _api.get(
-          ApiEndpoints.sites,
+          ApiEndpoints.mosques,
           queryParameters: {
             if (position != null) ...{
               'latitude': position.latitude,
               'longitude': position.longitude,
             },
           },
-          parser: (data) => Json.list(data, Site.fromJson),
+          parser: (data) => Json.list(data, Mosque.fromJson),
         ),
       );
 
@@ -54,42 +54,42 @@ class GameRepository {
   ///
   /// Null bila belum ada masjid sama sekali. Jarak dan status area ikut
   /// terisi, jadi jawabannya cukup untuk langsung membuka lokasi yang benar.
-  Future<Site?> fetchNearestSite(PlayerPosition position) =>
+  Future<Mosque?> fetchNearestMosque(PlayerPosition position) =>
       FailureMapper.guard(
         () => _api.get(
-          ApiEndpoints.nearestSite,
+          ApiEndpoints.nearestMosque,
           queryParameters: {
             'latitude': position.latitude,
             'longitude': position.longitude,
           },
           parser: (data) =>
-              data is Map<String, dynamic> ? Site.fromJson(data) : null,
+              data is Map<String, dynamic> ? Mosque.fromJson(data) : null,
         ),
       );
 
   /// Detail satu lokasi, lengkap dengan kemajuan pemain di sana.
-  Future<Site> fetchSite(String id, {PlayerPosition? position}) =>
+  Future<Mosque> fetchMosque(String id, {PlayerPosition? position}) =>
       FailureMapper.guard(
         () => _api.get(
-          ApiEndpoints.site(id),
+          ApiEndpoints.mosque(id),
           queryParameters: {
             if (position != null) ...{
               'latitude': position.latitude,
               'longitude': position.longitude,
             },
           },
-          parser: (data) => Site.fromJson(Json.map(data)),
+          parser: (data) => Mosque.fromJson(Json.map(data)),
         ),
       );
 
   /// Layer 1 — memeriksa apakah pemain berada di dalam area masjid.
   Future<GeofenceStatus> checkGeofence({
-    required String siteId,
+    required String mosqueId,
     required PlayerPosition position,
   }) =>
       FailureMapper.guard(
         () => _api.get(
-          ApiEndpoints.geofence(siteId),
+          ApiEndpoints.geofence(mosqueId),
           queryParameters: {
             'latitude': position.latitude,
             'longitude': position.longitude,
@@ -105,14 +105,14 @@ class GameRepository {
   /// Bila [position] dikirim, tiap checkpoint dilengkapi jarak dan bearing hasil
   /// perhitungan server — dipakai peta dan radar.
   Future<List<Checkpoint>> fetchCheckpoints({
-    required String siteId,
+    required String mosqueId,
     PlayerPosition? position,
   }) =>
       FailureMapper.guard(
         () => _api.get(
           ApiEndpoints.checkpoints,
           queryParameters: {
-            'siteId': siteId,
+            'mosqueId': mosqueId,
             if (position != null) ...{
               'latitude': position.latitude,
               'longitude': position.longitude,
@@ -124,19 +124,19 @@ class GameRepository {
 
   // ── Misi ──────────────────────────────────────────────────────
 
-  Future<List<Mission>> fetchMissions(String siteId) => FailureMapper.guard(
+  Future<List<Mission>> fetchMissions(String mosqueId) => FailureMapper.guard(
         () => _api.get(
           ApiEndpoints.missions,
-          queryParameters: {'siteId': siteId},
+          queryParameters: {'mosqueId': mosqueId},
           parser: (data) => Json.list(data, Mission.fromJson),
         ),
       );
 
   /// Misi yang sedang berjalan. Null bila seluruh misi sudah diselesaikan.
-  Future<Mission?> fetchActiveMission(String siteId) => FailureMapper.guard(
+  Future<Mission?> fetchActiveMission(String mosqueId) => FailureMapper.guard(
         () => _api.get(
           ApiEndpoints.activeMission,
-          queryParameters: {'siteId': siteId},
+          queryParameters: {'mosqueId': mosqueId},
           parser: (data) =>
               data is Map<String, dynamic> ? Mission.fromJson(data) : null,
         ),

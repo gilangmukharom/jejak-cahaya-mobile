@@ -1,7 +1,7 @@
 import 'package:flutter_test/flutter_test.dart';
-import 'package:nusaverse/core/models/collectible.dart';
-import 'package:nusaverse/core/models/enums.dart';
-import 'package:nusaverse/core/models/json_utils.dart';
+import 'package:jejak_cahaya/core/models/collectible.dart';
+import 'package:jejak_cahaya/core/models/enums.dart';
+import 'package:jejak_cahaya/core/models/json_utils.dart';
 
 void main() {
   group('Json helper', () {
@@ -38,10 +38,8 @@ void main() {
   group('Enum parsing', () {
     test('memetakan nilai backend yang dikenal', () {
       expect(Rarity.parse('LEGENDARY'), Rarity.legendary);
-      expect(CollectibleCategory.parse('WARRIOR'), CollectibleCategory.warrior);
-      // Nilai lama dari sebelum rebrand NUSAVERSE tidak boleh membuat crash.
-      expect(
-          CollectibleCategory.parse('COMPANION'), CollectibleCategory.unknown);
+      expect(CollectibleCategory.parse('COMPANION'),
+          CollectibleCategory.companion);
       expect(CollectibleType.parse('ARTIFACT'), CollectibleType.artifact);
     });
 

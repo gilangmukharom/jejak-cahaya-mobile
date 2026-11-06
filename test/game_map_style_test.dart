@@ -4,7 +4,7 @@ import 'dart:typed_data';
 import 'dart:ui' as ui;
 
 import 'package:flutter_test/flutter_test.dart';
-import 'package:nusaverse/app/theme/game_map_style.dart';
+import 'package:jejak_cahaya/app/theme/game_map_style.dart';
 import 'package:pmtiles/pmtiles.dart';
 import 'package:vector_tile_renderer/vector_tile_renderer.dart';
 
@@ -23,8 +23,8 @@ void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
 
   /// Koordinat Masjid PIK — pusat area bermain pada data seed.
-  const double siteLat = -6.1094;
-  const double siteLon = 106.7395;
+  const double mosqueLat = -6.1094;
+  const double mosqueLon = 106.7395;
 
   /// Zoom maksimum yang tersedia di dalam arsip.
   const int archiveZoom = 15;
@@ -40,7 +40,7 @@ void main() {
   test('arsip basemap mencakup lokasi masjid', () {
     expect(archive.header.maxZoom, greaterThanOrEqualTo(archiveZoom));
 
-    final tile = _tileAt(siteLat, siteLon, archiveZoom);
+    final tile = _tileAt(mosqueLat, mosqueLon, archiveZoom);
     expect(
       () => ZXY(archiveZoom, tile.x, tile.y).toTileId(),
       returnsNormally,
@@ -53,7 +53,7 @@ void main() {
 
     // Nama layer yang dirujuk gaya harus benar-benar ada pada tile. Ini
     // pemeriksaan yang paling langsung menangkap salah ketik `source-layer`.
-    final vectorTile = await _readTile(archive, siteLat, siteLon);
+    final vectorTile = await _readTile(archive, mosqueLat, mosqueLon);
     final layerNames = vectorTile.layers.map((layer) => layer.name).toSet();
     expect(
       layerNames,
@@ -114,7 +114,7 @@ void main() {
     // nilai di luar rentang yang didaftarkan bisa saja menghasilkan lebar nol
     // dan membuat jalan lenyap justru pada perbesaran yang dipakai bermain.
     final theme = GameMapStyle.build();
-    final vectorTile = await _readTile(archive, siteLat, siteLon);
+    final vectorTile = await _readTile(archive, mosqueLat, mosqueLon);
 
     final image = await _render(theme, vectorTile, zoom: 18);
     await _dumpIfRequested(image, 'basemap_z18.png');

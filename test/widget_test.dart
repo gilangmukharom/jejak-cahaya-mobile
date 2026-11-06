@@ -1,9 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:nusaverse/app/theme/app_colors.dart';
-import 'package:nusaverse/app/theme/app_theme.dart';
-import 'package:nusaverse/core/error/failures.dart';
-import 'package:nusaverse/core/widgets/app_widgets.dart';
+import 'package:jejak_cahaya/app/theme/app_colors.dart';
+import 'package:jejak_cahaya/app/theme/app_theme.dart';
+import 'package:jejak_cahaya/core/error/failures.dart';
+import 'package:jejak_cahaya/core/widgets/app_widgets.dart';
 
 /// Smoke test untuk widget bersama.
 ///

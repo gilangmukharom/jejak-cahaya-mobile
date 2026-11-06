@@ -95,7 +95,7 @@ class ExploreCubit extends Cubit<ExploreState> with SafeEmit<ExploreState> {
 
   StreamSubscription<PlayerPosition>? _positionSubscription;
   StreamSubscription<void>? _discoverySubscription;
-  String? _siteId;
+  String? _mosqueId;
 
   /// Jeda antar pengambilan ulang jarak checkpoint dari server.
   ///
@@ -115,8 +115,8 @@ class ExploreCubit extends Cubit<ExploreState> with SafeEmit<ExploreState> {
   static const Duration _syncInterval = Duration(seconds: 45);
   DateTime? _lastSyncAt;
 
-  Future<void> load(String siteId) async {
-    _siteId = siteId;
+  Future<void> load(String mosqueId) async {
+    _mosqueId = mosqueId;
     emit(state.copyWith(isLoading: true, clearFailure: true));
 
     try {
@@ -124,8 +124,8 @@ class ExploreCubit extends Cubit<ExploreState> with SafeEmit<ExploreState> {
           _location.lastKnown ?? await _location.getCurrentPosition();
 
       final (checkpoints, activeMission) = await (
-        _repository.fetchCheckpoints(siteId: siteId, position: position),
-        _repository.fetchActiveMission(siteId),
+        _repository.fetchCheckpoints(mosqueId: mosqueId, position: position),
+        _repository.fetchActiveMission(mosqueId),
       ).wait;
 
       _lastSyncAt = DateTime.now();
@@ -150,8 +150,8 @@ class ExploreCubit extends Cubit<ExploreState> with SafeEmit<ExploreState> {
   /// Menyegarkan setelah sebuah penemuan, agar checkpoint yang baru dipindai
   /// langsung berubah status dan progres misi ikut diperbarui.
   Future<void> refreshAfterDiscovery() async {
-    final siteId = _siteId;
-    if (siteId == null) return;
+    final mosqueId = _mosqueId;
+    if (mosqueId == null) return;
 
     _lastSyncAt = null;
     await _syncFromServer(_location.lastKnown);
@@ -211,9 +211,7 @@ class ExploreCubit extends Cubit<ExploreState> with SafeEmit<ExploreState> {
         hint: checkpoint.hint,
         distanceM: (distance * 10).round() / 10,
         bearingDeg: (bearing * 10).round() / 10,
-        isInRange:
-            !checkpoint.enforceRadius || distance <= checkpoint.radiusMeters,
-        enforceRadius: checkpoint.enforceRadius,
+        isInRange: distance <= checkpoint.radiusMeters,
       );
     }).toList(growable: false);
 
@@ -221,15 +219,15 @@ class ExploreCubit extends Cubit<ExploreState> with SafeEmit<ExploreState> {
   }
 
   Future<void> _syncFromServer(PlayerPosition? position) async {
-    final siteId = _siteId;
-    if (siteId == null) return;
+    final mosqueId = _mosqueId;
+    if (mosqueId == null) return;
 
     _lastSyncAt = DateTime.now();
 
     try {
       final (checkpoints, activeMission) = await (
-        _repository.fetchCheckpoints(siteId: siteId, position: position),
-        _repository.fetchActiveMission(siteId),
+        _repository.fetchCheckpoints(mosqueId: mosqueId, position: position),
+        _repository.fetchActiveMission(mosqueId),
       ).wait;
 
       emit(

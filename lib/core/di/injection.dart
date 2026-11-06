@@ -2,19 +2,15 @@ import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:get_it/get_it.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
-import '../../features/ar/data/ar_capability.dart';
-import '../../features/ar/data/model_cache.dart';
 import '../../features/auth/data/auth_repository.dart';
 import '../../features/auth/presentation/cubit/auth_cubit.dart';
 import '../../features/game/data/game_repository.dart';
-import '../../features/rewards/data/reward_repository.dart';
 import '../../features/game/presentation/cubit/geofence_cubit.dart';
 import '../network/api_client.dart';
 import '../network/dio_client.dart';
-import '../services/app_settings.dart';
 import '../services/basemap_service.dart';
 import '../services/location_service.dart';
-import '../services/narration_service.dart';
+import '../services/prayer_notification_service.dart';
 import '../services/scan_result_holder.dart';
 import '../storage/app_preferences.dart';
 import '../storage/token_storage.dart';
@@ -51,24 +47,22 @@ Future<void> configureDependencies() async {
         iOptions: IOSOptions(accessibility: KeychainAccessibility.first_unlock),
       ),
     )
-    ..registerSingleton<TokenStorage>(TokenStorage(sl<FlutterSecureStorage>()))
-    ..registerSingleton<AppSettings>(AppSettings(preferences));
+    ..registerSingleton<TokenStorage>(TokenStorage(sl<FlutterSecureStorage>()));
 
   // ── Layanan perangkat ─────────────────────────────────────────
   sl
-    ..registerSingleton<LocationService>(
-      LocationService(batterySaver: () => sl<AppSettings>().batterySaver),
-    )
-    ..registerLazySingleton<NarrationService>(NarrationService.new)
+    ..registerSingleton<LocationService>(LocationService())
     ..registerSingleton<ScanResultHolder>(ScanResultHolder())
+    // Jadwal sholat dihitung di perangkat; yang perlu dipegang lama hanyalah
+    // penjadwal alarmnya, yang menyiapkan basis data zona waktu dan saluran
+    // notifikasi sekali saja.
+    ..registerSingleton<PrayerNotificationService>(
+      PrayerNotificationService(sl<AppPreferences>()),
+    )
     // Singleton karena arsip petanya hanya perlu disalin dan dibuka sekali:
     // membuatnya per layar berarti menyalin ulang 5 MB setiap kali pemain
     // berpindah tab lalu kembali ke peta.
-    ..registerSingleton<BasemapService>(BasemapService())
-    // Singleton: memegang unduhan model yang sedang berjalan, agar tokoh yang
-    // sama tidak diunduh dua kali; dan jawaban ARCore cukup ditanya sekali.
-    ..registerSingleton<ModelCache>(ModelCache())
-    ..registerSingleton<ArCapability>(ArCapability());
+    ..registerSingleton<BasemapService>(BasemapService());
 
   // ── Jaringan ──────────────────────────────────────────────────
   // Interceptor perlu memberi tahu AuthCubit saat sesi berakhir, sementara
@@ -97,9 +91,7 @@ Future<void> configureDependencies() async {
       ),
     )
     ..registerLazySingleton<GameRepository>(
-        () => GameRepository(sl<ApiClient>()))
-    ..registerLazySingleton<RewardRepository>(
-        () => RewardRepository(sl<ApiClient>()));
+        () => GameRepository(sl<ApiClient>()));
 
   // ── State global ──────────────────────────────────────────────
   sl

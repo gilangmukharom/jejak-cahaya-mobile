@@ -62,7 +62,7 @@ class _LoginPageState extends State<LoginPage> {
                   const _AuthHeader(
                     title: 'Selamat Datang Kembali',
                     subtitle:
-                        'Masuk untuk melanjutkan petualangan menemukan pahlawan Nusantara.',
+                        'Masuk untuk melanjutkan penjelajahan jejak para tokoh Islam.',
                   ),
                   const SizedBox(height: 36),
                   TextFormField(
@@ -161,18 +161,14 @@ class _AuthHeader extends StatelessWidget {
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         Container(
-          width: 72,
-          height: 72,
-          padding: const EdgeInsets.all(8),
+          width: 60,
+          height: 60,
           decoration: BoxDecoration(
             gradient: AppColors.primaryGradient,
-            borderRadius: BorderRadius.circular(20),
+            borderRadius: BorderRadius.circular(18),
           ),
-          child: Image.asset(
-            'assets/images/nusaverse_logo.png',
-            filterQuality: FilterQuality.medium,
-            semanticLabel: 'Logo NUSAVERSE',
-          ),
+          child:
+              const Icon(Icons.mosque_rounded, color: AppColors.gold, size: 32),
         ),
         const SizedBox(height: 24),
         Text(

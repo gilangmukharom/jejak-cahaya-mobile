@@ -6,7 +6,7 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import '../../../../core/bloc/safe_emit.dart';
 import '../../../../core/error/failure_mapper.dart';
 import '../../../../core/error/failures.dart';
-import '../../../../core/models/site.dart';
+import '../../../../core/models/mosque.dart';
 import '../../../../core/services/location_service.dart';
 import '../../../../core/storage/app_preferences.dart';
 import '../../data/game_repository.dart';
@@ -32,49 +32,48 @@ enum GeofenceStage {
 }
 
 /// Masjid terdekat beserta jarak tempuh ke tepi areanya.
-class NearestSite extends Equatable {
-  const NearestSite({
-    required this.site,
+class NearestMosque extends Equatable {
+  const NearestMosque({
+    required this.mosque,
     required this.distanceM,
   });
 
-  final Site site;
+  final Mosque mosque;
 
   /// Jarak ke titik pusat masjid, bukan ke tepi areanya.
   final double distanceM;
 
   /// Sisa jarak sampai masuk area bermain.
-  double get metersToEnter => site.enforceRadius
-      ? (distanceM - site.radiusMeters).clamp(0, double.infinity)
-      : 0;
+  double get metersToEnter =>
+      (distanceM - mosque.radiusMeters).clamp(0, double.infinity);
 
   @override
-  List<Object?> get props => [site.id, distanceM];
+  List<Object?> get props => [mosque.id, distanceM];
 }
 
 class GeofenceState extends Equatable {
   const GeofenceState({
     this.stage = GeofenceStage.initial,
     this.status,
-    this.site,
+    this.mosque,
     this.position,
-    this.sites = const [],
+    this.mosques = const [],
     this.nearest,
-    this.pinnedSiteId,
+    this.pinnedMosqueId,
     this.failure,
   });
 
   final GeofenceStage stage;
   final GeofenceStatus? status;
-  final Site? site;
+  final Mosque? mosque;
   final PlayerPosition? position;
 
   /// Seluruh masjid yang bisa dimainkan, apa adanya dari server.
-  final List<Site> sites;
+  final List<Mosque> mosques;
 
-  /// Masjid terdekat dari posisi pemain. Sama dengan [site] ketika pemain
+  /// Masjid terdekat dari posisi pemain. Sama dengan [mosque] ketika pemain
   /// sedang berada di dalam area.
-  final NearestSite? nearest;
+  final NearestMosque? nearest;
 
   /// Lokasi yang dipilih sendiri oleh pemain dari daftar lokasi.
   ///
@@ -82,7 +81,7 @@ class GeofenceState extends Equatable {
   /// dan yang benar bagi hampir semua orang. Pilihan manual berguna untuk
   /// kebalikannya: melihat-lihat lokasi yang belum didatangi, memeriksa
   /// misinya, dan memutuskan akan ke mana.
-  final String? pinnedSiteId;
+  final String? pinnedMosqueId;
 
   final Failure? failure;
 
@@ -103,16 +102,17 @@ class GeofenceState extends Equatable {
 
   /// Apakah lokasi yang sedang dibuka berasal dari pilihan pemain, bukan dari
   /// perhitungan terdekat. Dipakai peta untuk menawarkan "kembali ke terdekat".
-  bool get isPinned => pinnedSiteId != null && pinnedSiteId != nearest?.site.id;
+  bool get isPinned =>
+      pinnedMosqueId != null && pinnedMosqueId != nearest?.mosque.id;
 
   GeofenceState copyWith({
     GeofenceStage? stage,
     GeofenceStatus? status,
-    Site? site,
+    Mosque? mosque,
     PlayerPosition? position,
-    List<Site>? sites,
-    NearestSite? nearest,
-    String? pinnedSiteId,
+    List<Mosque>? mosques,
+    NearestMosque? nearest,
+    String? pinnedMosqueId,
     Failure? failure,
     bool clearFailure = false,
     bool clearPinned = false,
@@ -120,17 +120,18 @@ class GeofenceState extends Equatable {
       GeofenceState(
         stage: stage ?? this.stage,
         status: status ?? this.status,
-        site: site ?? this.site,
+        mosque: mosque ?? this.mosque,
         position: position ?? this.position,
-        sites: sites ?? this.sites,
+        mosques: mosques ?? this.mosques,
         nearest: nearest ?? this.nearest,
-        pinnedSiteId: clearPinned ? null : (pinnedSiteId ?? this.pinnedSiteId),
+        pinnedMosqueId:
+            clearPinned ? null : (pinnedMosqueId ?? this.pinnedMosqueId),
         failure: clearFailure ? null : (failure ?? this.failure),
       );
 
   @override
   List<Object?> get props =>
-      [stage, status, site, position, sites, nearest, pinnedSiteId, failure];
+      [stage, status, mosque, position, mosques, nearest, pinnedMosqueId, failure];
 }
 
 /// Menegakkan Layer 1 — tetapi hanya atas bagian aplikasi yang memang permainan.
@@ -185,34 +186,34 @@ class GeofenceCubit extends Cubit<GeofenceState> with SafeEmit<GeofenceState> {
   DateTime? _lastCheckedAt;
 
   /// Menentukan masjid yang dimainkan lalu mulai memantau lokasi.
-  Future<void> initialize({String? siteId}) async {
+  Future<void> initialize({String? mosqueId}) async {
     emit(state.copyWith(stage: GeofenceStage.locating, clearFailure: true));
 
     try {
-      final sites = state.sites.isNotEmpty
-          ? state.sites
-          : await _repository.fetchSites(
+      final mosques = state.mosques.isNotEmpty
+          ? state.mosques
+          : await _repository.fetchMosques(
               position: _location.lastKnown,
             );
 
-      if (sites.isEmpty) {
+      if (mosques.isEmpty) {
         emit(
           state.copyWith(
             stage: GeofenceStage.error,
             failure: const UnknownFailure(
-              message: 'Belum ada lokasi yang tersedia untuk dijelajahi.',
+              message: 'Belum ada masjid yang tersedia untuk dijelajahi.',
             ),
           ),
         );
         return;
       }
 
-      emit(state.copyWith(sites: sites));
+      emit(state.copyWith(mosques: mosques));
 
       await _location.ensurePermission();
       final position = await _location.getCurrentPosition();
 
-      await _evaluate(position, preferredSiteId: siteId);
+      await _evaluate(position, preferredMosqueId: mosqueId);
       await _startWatching();
     } on LocationFailure catch (failure) {
       emit(state.copyWith(
@@ -229,7 +230,7 @@ class GeofenceCubit extends Cubit<GeofenceState> with SafeEmit<GeofenceState> {
 
   /// Memeriksa ulang atas permintaan pengguna, melewati jeda otomatis.
   Future<void> refresh() async {
-    if (state.sites.isEmpty) {
+    if (state.mosques.isEmpty) {
       await initialize();
       return;
     }
@@ -262,11 +263,11 @@ class GeofenceCubit extends Cubit<GeofenceState> with SafeEmit<GeofenceState> {
   /// melangkah masuk ke area masjid lain — lihat [_resolveTarget]. Berguna
   /// untuk melihat-lihat lokasi yang belum didatangi: misi apa yang menunggu
   /// di sana, berapa titik yang tersisa, seberapa jauh perjalanannya.
-  Future<void> selectSite(String siteId) async {
-    if (state.sites.every((site) => site.id != siteId)) return;
+  Future<void> selectMosque(String mosqueId) async {
+    if (state.mosques.every((mosque) => mosque.id != mosqueId)) return;
 
-    emit(state.copyWith(pinnedSiteId: siteId));
-    await _preferences.setLastSiteId(siteId);
+    emit(state.copyWith(pinnedMosqueId: mosqueId));
+    await _preferences.setLastMosqueId(mosqueId);
 
     final position = state.position ?? _location.lastKnown;
     if (position == null) return;
@@ -275,12 +276,12 @@ class GeofenceCubit extends Cubit<GeofenceState> with SafeEmit<GeofenceState> {
     // delapan detik sebelum layarnya berubah akan terbaca sebagai ketukan yang
     // tidak tersampaikan.
     _lastCheckedAt = null;
-    await _evaluate(position, preferredSiteId: siteId);
+    await _evaluate(position, preferredMosqueId: mosqueId);
   }
 
   /// Melepas pilihan manual dan kembali mengikuti lokasi terdekat.
   Future<void> followNearest() async {
-    if (state.pinnedSiteId == null) return;
+    if (state.pinnedMosqueId == null) return;
 
     emit(state.copyWith(clearPinned: true));
 
@@ -295,14 +296,14 @@ class GeofenceCubit extends Cubit<GeofenceState> with SafeEmit<GeofenceState> {
   ///
   /// Dipanggil daftar lokasi saat disegarkan, dan setelah sebuah penemuan —
   /// dua saat ketika angka kemajuannya memang berubah.
-  Future<void> refreshSites() async {
+  Future<void> refreshMosques() async {
     try {
-      final sites = await _repository.fetchSites(
+      final mosques = await _repository.fetchMosques(
         position: state.position ?? _location.lastKnown,
       );
-      if (sites.isEmpty) return;
+      if (mosques.isEmpty) return;
 
-      emit(state.copyWith(sites: sites));
+      emit(state.copyWith(mosques: mosques));
     } on Object {
       // Penyegaran latar belakang yang gagal tidak boleh mengubah apa pun;
       // daftar terakhir tetap ditampilkan sampai percobaan berikutnya.
@@ -336,20 +337,20 @@ class GeofenceCubit extends Cubit<GeofenceState> with SafeEmit<GeofenceState> {
   ///
   /// Rumusnya sama dengan yang dipakai server, jadi angkanya tidak akan
   /// berselisih dengan jawaban resmi yang datang beberapa detik kemudian.
-  NearestSite? _nearestTo(PlayerPosition position) {
-    if (state.sites.isEmpty) return null;
+  NearestMosque? _nearestTo(PlayerPosition position) {
+    if (state.mosques.isEmpty) return null;
 
-    NearestSite? closest;
-    for (final site in state.sites) {
+    NearestMosque? closest;
+    for (final mosque in state.mosques) {
       final distance = LocationService.distanceMeters(
         fromLat: position.latitude,
         fromLon: position.longitude,
-        toLat: site.latitude,
-        toLon: site.longitude,
+        toLat: mosque.latitude,
+        toLon: mosque.longitude,
       );
 
       if (closest == null || distance < closest.distanceM) {
-        closest = NearestSite(site: site, distanceM: distance);
+        closest = NearestMosque(mosque: mosque, distanceM: distance);
       }
     }
 
@@ -373,50 +374,51 @@ class GeofenceCubit extends Cubit<GeofenceState> with SafeEmit<GeofenceState> {
   /// Mengembalikan pasangan: id yang dipakai, dan apakah pilihan manual perlu
   /// dilepas.
   ({String id, bool releasePin}) _resolveTarget(
-    NearestSite? nearest,
-    String? preferredSiteId,
+    NearestMosque? nearest,
+    String? preferredMosqueId,
   ) {
-    if (preferredSiteId != null) {
-      return (id: preferredSiteId, releasePin: false);
+    if (preferredMosqueId != null) {
+      return (id: preferredMosqueId, releasePin: false);
     }
 
-    final pinned = state.pinnedSiteId;
+    final pinned = state.pinnedMosqueId;
     final steppedInto = nearest != null &&
-        nearest.distanceM <= nearest.site.radiusMeters &&
-        nearest.site.id != pinned;
+        nearest.distanceM <= nearest.mosque.radiusMeters &&
+        nearest.mosque.id != pinned;
 
     if (pinned != null && !steppedInto) {
       return (id: pinned, releasePin: false);
     }
 
-    final fallback =
-        nearest?.site.id ?? _preferences.lastSiteId ?? state.sites.first.id;
+    final fallback = nearest?.mosque.id ??
+        _preferences.lastMosqueId ??
+        state.mosques.first.id;
 
     return (id: fallback, releasePin: pinned != null);
   }
 
   Future<void> _evaluate(
     PlayerPosition position, {
-    String? preferredSiteId,
+    String? preferredMosqueId,
   }) async {
     _lastCheckedAt = DateTime.now();
 
     final nearest = _nearestTo(position);
-    final target = _resolveTarget(nearest, preferredSiteId);
+    final target = _resolveTarget(nearest, preferredMosqueId);
 
     try {
       final status = await _repository.checkGeofence(
-        siteId: target.id,
+        mosqueId: target.id,
         position: position,
       );
 
-      if (status.isInside) await _preferences.setLastSiteId(target.id);
+      if (status.isInside) await _preferences.setLastMosqueId(target.id);
 
       emit(
         state.copyWith(
           stage: status.isInside ? GeofenceStage.inside : GeofenceStage.outside,
           status: status,
-          site: status.site,
+          mosque: status.mosque,
           position: position,
           nearest: nearest,
           clearPinned: target.releasePin,

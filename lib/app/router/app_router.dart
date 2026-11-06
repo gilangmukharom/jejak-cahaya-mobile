@@ -5,8 +5,6 @@ import 'package:go_router/go_router.dart';
 
 import '../../core/di/injection.dart';
 import '../../core/services/scan_result_holder.dart';
-import '../../features/ar/presentation/pages/ar_discovery_page.dart';
-import '../../features/ar/presentation/pages/ar_viewer_page.dart';
 import '../../features/auth/presentation/cubit/auth_cubit.dart';
 import '../../features/auth/presentation/pages/login_page.dart';
 import '../../features/auth/presentation/pages/register_page.dart';
@@ -25,12 +23,10 @@ import '../../features/mission/presentation/pages/missions_page.dart';
 import '../../features/profile/presentation/pages/achievements_page.dart';
 import '../../features/profile/presentation/pages/profile_page.dart';
 import '../../features/quiz/presentation/pages/quiz_page.dart';
-import '../../features/profile/presentation/pages/settings_page.dart';
-import '../../features/rewards/presentation/pages/challenges_page.dart';
-import '../../features/rewards/presentation/pages/my_redemptions_page.dart';
-import '../../features/rewards/presentation/pages/point_history_page.dart';
-import '../../features/rewards/presentation/pages/reward_store_page.dart';
 import '../../features/scanner/presentation/pages/scanner_page.dart';
+import '../../features/worship/presentation/pages/prayer_settings_page.dart';
+import '../../features/worship/presentation/pages/qibla_page.dart';
+import '../../features/worship/presentation/pages/worship_page.dart';
 import 'app_routes.dart';
 
 /// Merakit rute aplikasi.
@@ -93,8 +89,8 @@ class AppRouter {
           StatefulShellBranch(
             routes: [
               GoRoute(
-                path: AppRoutes.rewards,
-                builder: (context, state) => const RewardStorePage(),
+                path: AppRoutes.worship,
+                builder: (context, state) => const WorshipPage(),
               ),
             ],
           ),
@@ -111,23 +107,15 @@ class AppRouter {
 
       // Layar penuh di luar cangkang.
       GoRoute(
-        path: AppRoutes.myRedemptions,
-        builder: (context, state) => const MyRedemptionsPage(),
+        path: AppRoutes.qibla,
+        builder: (context, state) => const QiblaPage(),
       ),
       GoRoute(
-        path: AppRoutes.pointHistory,
-        builder: (context, state) => const PointHistoryPage(),
-      ),
-      GoRoute(
-        path: AppRoutes.challenges,
-        builder: (context, state) => const ChallengesPage(),
-      ),
-      GoRoute(
-        path: AppRoutes.settings,
-        builder: (context, state) => const SettingsPage(),
+        path: AppRoutes.prayerSettings,
+        builder: (context, state) => const PrayerSettingsPage(),
       ),
 
-      // Misi berada di luar cangkang; slot tab-nya kini dipakai Reward Store. Dibuka lewat
+      // Misi keluar dari cangkang saat tab-nya digantikan Ibadah. Dibuka lewat
       // `push` dari bilah misi di atas peta dan dari halaman Profil, sehingga
       // tombol kembali membawa pemain persis ke tempat ia menekannya.
       GoRoute(
@@ -146,7 +134,7 @@ class AppRouter {
       GoRoute(
         path: AppRoutes.locationDetailPattern,
         builder: (context, state) => LocationDetailPage(
-          siteId: state.pathParameters['id'] ?? '',
+          mosqueId: state.pathParameters['id'] ?? '',
         ),
       ),
 
@@ -172,24 +160,8 @@ class AppRouter {
         },
       ),
       GoRoute(
-        path: AppRoutes.discoveryAr,
-        builder: (context, state) {
-          // Sama seperti layar penemuan: dibaca dari holder agar kebal
-          // terhadap penyegaran router.
-          final result = sl<ScanResultHolder>().lastResult;
-          if (result == null) return const ExplorePage();
-          return ArDiscoveryPage(result: result);
-        },
-      ),
-      GoRoute(
         path: AppRoutes.collectibleDetailPattern,
         builder: (context, state) => CollectibleDetailPage(
-          idOrSlug: state.pathParameters['idOrSlug'] ?? '',
-        ),
-      ),
-      GoRoute(
-        path: AppRoutes.collectibleArPattern,
-        builder: (context, state) => ArViewerPage(
           idOrSlug: state.pathParameters['idOrSlug'] ?? '',
         ),
       ),

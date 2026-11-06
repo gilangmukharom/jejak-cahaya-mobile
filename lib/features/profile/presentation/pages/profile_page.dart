@@ -13,7 +13,6 @@ import '../../../auth/data/auth_repository.dart';
 import '../../../auth/presentation/cubit/auth_cubit.dart';
 import '../../../game/data/game_repository.dart';
 import '../cubit/profile_cubit.dart';
-import '../../../rewards/presentation/widgets/points_badge.dart';
 
 class ProfilePage extends StatelessWidget {
   const ProfilePage({super.key});
@@ -84,23 +83,14 @@ class _ProfileView extends StatelessWidget {
                 if (stats != null) _StatsGrid(stats: stats),
                 const SizedBox(height: 20),
 
-                // Tantangan berulang lebih dulu: inilah yang berubah setiap
-                // hari, jadi yang paling sering perlu dibuka.
-                _MenuTile(
-                  icon: Icons.emoji_events_rounded,
-                  title: 'Tantangan Harian & Mingguan',
-                  subtitle: 'Selesaikan dan klaim NUSA POINTS tambahan',
-                  onTap: () => context.push(AppRoutes.challenges),
-                ),
-                const SizedBox(height: 10),
-
-                // Misi tidak punya tab sendiri; selain lewat bilah misi di atas
-                // peta, di sinilah ia dijangkau — dan tetap terbuka meski
-                // pemain sedang jauh dari lokasi mana pun.
+                // Misi tidak lagi punya tab sendiri sejak slotnya diberikan ke
+                // Ibadah. Selain lewat bilah misi di atas peta, di sinilah ia
+                // dijangkau — dan di sini ia tetap terbuka meski pemain sedang
+                // jauh dari masjid mana pun.
                 _MenuTile(
                   icon: Icons.flag_rounded,
                   title: 'Misi',
-                  subtitle: 'Daftar hero yang bisa ditemukan di tiap lokasi',
+                  subtitle: 'Daftar tokoh yang bisa ditemukan',
                   onTap: () => context.push(AppRoutes.missions),
                 ),
                 const SizedBox(height: 10),
@@ -111,8 +101,7 @@ class _ProfileView extends StatelessWidget {
                 _MenuTile(
                   icon: Icons.travel_explore_rounded,
                   title: 'Lokasi Penjelajahan',
-                  subtitle:
-                      'Lokasi bersejarah yang bisa dimainkan & kemajuanmu',
+                  subtitle: 'Masjid yang bisa dimainkan & kemajuan di tiap lokasi',
                   onTap: () => context.push(AppRoutes.locations),
                 ),
                 const SizedBox(height: 10),
@@ -134,19 +123,11 @@ class _ProfileView extends StatelessWidget {
                 ),
                 const SizedBox(height: 10),
                 _MenuTile(
-                  icon: Icons.tune_rounded,
-                  title: 'Pengaturan & Aksesibilitas',
-                  subtitle:
-                      'Mode keluarga, teks besar, hemat baterai, tanpa AR',
-                  onTap: () => context.push(AppRoutes.settings),
-                ),
-                const SizedBox(height: 10),
-                _MenuTile(
                   icon: Icons.collections_bookmark_rounded,
-                  title: 'Hero Collection',
+                  title: 'Koleksi Saya',
                   subtitle: stats != null
-                      ? '${stats.discoveryCount} dari ${stats.totalCollectibles} Hero Card'
-                      : 'Lihat hero yang sudah ditemukan',
+                      ? '${stats.discoveryCount} dari ${stats.totalCollectibles} tokoh & artefak'
+                      : 'Lihat tokoh yang sudah ditemukan',
                   onTap: () => context.go(AppRoutes.collection),
                 ),
 
@@ -307,58 +288,6 @@ class _ProfileHeader extends StatelessWidget {
                     // Dipersingkat dari "XP lagi menuju level N": kalimat panjang
                     // terpotong pada ponsel sempit, sementara angkanya yang penting.
                     : '${level.totalXp} XP · ${level.xpToNextLevel} XP lagi ke Lv ${level.level + 1}',
-          ),
-          const SizedBox(height: 14),
-          Material(
-            color: Colors.white.withValues(alpha: 0.10),
-            borderRadius: BorderRadius.circular(14),
-            child: InkWell(
-              borderRadius: BorderRadius.circular(14),
-              onTap: () => context.go(AppRoutes.rewards),
-              child: Padding(
-                padding:
-                    const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
-                child: Row(
-                  children: [
-                    const PointsCoin(size: 26),
-                    const SizedBox(width: 12),
-                    Expanded(
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text(
-                            'NUSA POINTS',
-                            style: TextStyle(
-                              color:
-                                  AppColors.textOnDark.withValues(alpha: 0.7),
-                              fontSize: 11,
-                              fontWeight: FontWeight.w700,
-                              letterSpacing: 0.6,
-                            ),
-                          ),
-                          Text(
-                            formatPoints(user.nusaPoints),
-                            style: const TextStyle(
-                              color: AppColors.gold,
-                              fontSize: 18,
-                              fontWeight: FontWeight.w900,
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
-                    const Text(
-                      'Reward Store',
-                      style: TextStyle(
-                          color: AppColors.textOnDark,
-                          fontWeight: FontWeight.w700),
-                    ),
-                    const Icon(Icons.chevron_right_rounded,
-                        color: AppColors.textOnDark),
-                  ],
-                ),
-              ),
-            ),
           ),
         ],
       ),

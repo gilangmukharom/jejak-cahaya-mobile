@@ -120,7 +120,6 @@ class QuizResult extends Equatable {
     required this.corrections,
     required this.totalXp,
     required this.unlockedAchievements,
-    this.pointsEarned = 0,
     this.levelUp,
   });
 
@@ -136,9 +135,6 @@ class QuizResult extends Equatable {
   final List<QuizCorrection> corrections;
   final int totalXp;
   final List<Achievement> unlockedAchievements;
-
-  /// NUSA POINTS dari attempt ini — hanya saat pertama kali lulus.
-  final int pointsEarned;
   final LevelUp? levelUp;
 
   factory QuizResult.fromJson(Map<String, dynamic> json) => QuizResult(
@@ -153,7 +149,6 @@ class QuizResult extends Equatable {
         totalXp: Json.integer(json['totalXp']),
         unlockedAchievements:
             Json.list(json['unlockedAchievements'], Achievement.fromJson),
-        pointsEarned: Json.integer(json['pointsEarned']),
         levelUp: json['levelUp'] is Map<String, dynamic>
             ? LevelUp.fromJson(json['levelUp'] as Map<String, dynamic>)
             : null,
